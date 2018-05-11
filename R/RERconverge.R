@@ -1,0 +1,3430 @@
+# getphylocoords <- function(x, type = "phylogram", use.edge.length = TRUE, node.pos = NULL,
+#           show.tip.label = TRUE, show.node.label = FALSE, edge.color = "black",
+#           edge.width = 1, edge.lty = 1, font = 3, cex = par("cex"),
+#           adj = NULL, srt = 0, no.margin = FALSE, root.edge = FALSE,
+#           label.offset = 0, underscore = FALSE, x.lim = NULL, y.lim = NULL,
+#           direction = "rightwards", lab4ut = NULL, tip.color = "black",
+#           plot = TRUE, rotate.tree = 0, open.angle = 0, node.depth = 1,
+#           align.tip.label = FALSE, ...)
+# {
+#      Ntip <- length(x$tip.label)
+#      if (Ntip < 2) {
+#           warning("found less than 2 tips in the tree")
+#           return(NULL)
+#      }
+#      if (any(tabulate(x$edge[, 1]) == 1))
+#           stop("there are single (non-splitting) nodes in your tree; you may need to use collapse.singles()")
+#      .nodeHeight <- function(Ntip, Nnode, edge, Nedge, yy) .C(node_height,
+#                                                               as.integer(Ntip), as.integer(Nnode), as.integer(edge[,
+#                                                                                                                    1]), as.integer(edge[, 2]), as.integer(Nedge), as.double(yy))[[6]]
+#      .nodeDepth <- function(Ntip, Nnode, edge, Nedge, node.depth) .C(node_depth,
+#                                                                      as.integer(Ntip), as.integer(Nnode), as.integer(edge[,
+#                                                                                                                           1]), as.integer(edge[, 2]), as.integer(Nedge), double(Ntip +
+#                                                                                                                                                                                      Nnode), as.integer(node.depth))[[6]]
+#      .nodeDepthEdgelength <- function(Ntip, Nnode, edge, Nedge,
+#                                       edge.length) .C(node_depth_edgelength, as.integer(Ntip),
+#                                                       as.integer(Nnode), as.integer(edge[, 1]), as.integer(edge[,
+#                                                                                                                 2]), as.integer(Nedge), as.double(edge.length), double(Ntip +
+#                                                                                                                                                                             Nnode))[[7]]
+#      Nedge <- dim(x$edge)[1]
+#      Nnode <- x$Nnode
+#      if (any(x$edge < 1) || any(x$edge > Ntip + Nnode))
+#           stop("tree badly conformed; cannot plot. Check the edge matrix.")
+#      ROOT <- Ntip + 1
+#      type <- match.arg(type, c("phylogram", "cladogram", "fan",
+#                                "unrooted", "radial"))
+#      direction <- match.arg(direction, c("rightwards", "leftwards",
+#                                          "upwards", "downwards"))
+#      if (is.null(x$edge.length)) {
+#           use.edge.length <- FALSE
+#      }
+#      else {
+#           if (use.edge.length && type != "radial") {
+#                tmp <- sum(is.na(x$edge.length))
+#                if (tmp) {
+#                     warning(paste(tmp, "branch length(s) NA(s): branch lengths ignored in the plot"))
+#                     use.edge.length <- FALSE
+#                }
+#           }
+#      }
+#      if (is.numeric(align.tip.label)) {
+#           align.tip.label.lty <- align.tip.label
+#           align.tip.label <- TRUE
+#      }
+#      else {
+#           if (align.tip.label)
+#                align.tip.label.lty <- 3
+#      }
+#      if (align.tip.label) {
+#           if (type %in% c("unrooted", "radial") || !use.edge.length ||
+#               is.ultrametric(x))
+#                align.tip.label <- FALSE
+#      }
+#      if (type %in% c("unrooted", "radial") || !use.edge.length ||
+#          is.null(x$root.edge) || !x$root.edge)
+#           root.edge <- FALSE
+#      phyloORclado <- type %in% c("phylogram", "cladogram")
+#      horizontal <- direction %in% c("rightwards", "leftwards")
+#      xe <- x$edge
+#      if (phyloORclado) {
+#           phyOrder <- attr(x, "order")
+#           if (is.null(phyOrder) || phyOrder != "cladewise") {
+#                x <- reorder(x)
+#                if (!identical(x$edge, xe)) {
+#                     ereorder <- match(x$edge[, 2], xe[, 2])
+#                     if (length(edge.color) > 1) {
+#                          edge.color <- rep(edge.color, length.out = Nedge)
+#                          edge.color <- edge.color[ereorder]
+#                     }
+#                     if (length(edge.width) > 1) {
+#                          edge.width <- rep(edge.width, length.out = Nedge)
+#                          edge.width <- edge.width[ereorder]
+#                     }
+#                     if (length(edge.lty) > 1) {
+#                          edge.lty <- rep(edge.lty, length.out = Nedge)
+#                          edge.lty <- edge.lty[ereorder]
+#                     }
+#                }
+#           }
+#           yy <- numeric(Ntip + Nnode)
+#           TIPS <- x$edge[x$edge[, 2] <= Ntip, 2]
+#           yy[TIPS] <- 1:Ntip
+#      }
+#      z <- reorder(x, order = "postorder")
+#      if (phyloORclado) {
+#           if (is.null(node.pos))
+#                node.pos <- if (type == "cladogram" && !use.edge.length)
+#                     2
+#           else 1
+#           if (node.pos == 1)
+#                yy <- .nodeHeight(Ntip, Nnode, z$edge, Nedge, yy)
+#           else {
+#                ans <- .C(node_height_clado, as.integer(Ntip), as.integer(Nnode),
+#                          as.integer(z$edge[, 1]), as.integer(z$edge[,
+#                                                                     2]), as.integer(Nedge), double(Ntip + Nnode),
+#                          as.double(yy))
+#                xx <- ans[[6]] - 1
+#                yy <- ans[[7]]
+#           }
+#           if (!use.edge.length) {
+#                if (node.pos != 2)
+#                     xx <- .nodeDepth(Ntip, Nnode, z$edge, Nedge,
+#                                      node.depth) - 1
+#                xx <- max(xx) - xx
+#           }
+#           else {
+#                xx <- .nodeDepthEdgelength(Ntip, Nnode, z$edge, Nedge,
+#                                           z$edge.length)
+#           }
+#      }
+#      else {
+#           twopi <- 2 * pi
+#           rotate.tree <- twopi * rotate.tree/360
+#           if (type != "unrooted") {
+#                TIPS <- x$edge[which(x$edge[, 2] <= Ntip), 2]
+#                xx <- seq(0, twopi * (1 - 1/Ntip) - twopi * open.angle/360,
+#                          length.out = Ntip)
+#                theta <- double(Ntip)
+#                theta[TIPS] <- xx
+#                theta <- c(theta, numeric(Nnode))
+#           }
+#           switch(type, fan = {
+#                theta <- .nodeHeight(Ntip, Nnode, z$edge, Nedge,
+#                                     theta)
+#                if (use.edge.length) {
+#                     r <- .nodeDepthEdgelength(Ntip, Nnode, z$edge,
+#                                               Nedge, z$edge.length)
+#                } else {
+#                     r <- .nodeDepth(Ntip, Nnode, z$edge, Nedge, node.depth)
+#                     r <- 1/r
+#                }
+#                theta <- theta + rotate.tree
+#                if (root.edge) r <- r + x$root.edge
+#                xx <- r * cos(theta)
+#                yy <- r * sin(theta)
+#           }, unrooted = {
+#                nb.sp <- .nodeDepth(Ntip, Nnode, z$edge, Nedge, node.depth)
+#                XY <- if (use.edge.length) unrooted.xy(Ntip, Nnode,
+#                                                       z$edge, z$edge.length, nb.sp, rotate.tree) else unrooted.xy(Ntip,
+#                                                                                                                   Nnode, z$edge, rep(1, Nedge), nb.sp, rotate.tree)
+#                xx <- XY$M[, 1] - min(XY$M[, 1])
+#                yy <- XY$M[, 2] - min(XY$M[, 2])
+#           }, radial = {
+#                r <- .nodeDepth(Ntip, Nnode, z$edge, Nedge, node.depth)
+#                r[r == 1] <- 0
+#                r <- 1 - r/Ntip
+#                theta <- .nodeHeight(Ntip, Nnode, z$edge, Nedge,
+#                                     theta) + rotate.tree
+#                xx <- r * cos(theta)
+#                yy <- r * sin(theta)
+#           })
+#      }
+#      if (phyloORclado) {
+#           if (!horizontal) {
+#                tmp <- yy
+#                yy <- xx
+#                xx <- tmp - min(tmp) + 1
+#           }
+#           if (root.edge) {
+#                if (direction == "rightwards")
+#                     xx <- xx + x$root.edge
+#                if (direction == "upwards")
+#                     yy <- yy + x$root.edge
+#           }
+#      }
+#      if (no.margin)
+#           par(mai = rep(0, 4))
+#      if (show.tip.label)
+#           nchar.tip.label <- nchar(x$tip.label)
+#      max.yy <- max(yy)
+#      if (is.null(x.lim)) {
+#           if (phyloORclado) {
+#                if (horizontal) {
+#                     x.lim <- c(0, NA)
+#                     pin1 <- par("pin")[1]
+#                     strWi <- strwidth(x$tip.label, "inches", cex = cex)
+#                     xx.tips <- xx[1:Ntip] * 1.04
+#                     alp <- try(uniroot(function(a) max(a * xx.tips +
+#                                                             strWi) - pin1, c(0, 1e+06))$root, silent = TRUE)
+#                     if (is.character(alp)) {
+#                          tmp <- max(xx.tips)
+#                          if (show.tip.label)
+#                               tmp <- tmp * 1.5
+#                     }
+#                     else {
+#                          tmp <- if (show.tip.label)
+#                               max(xx.tips + strWi/alp)
+#                          else max(xx.tips)
+#                     }
+#                     if (show.tip.label)
+#                          tmp <- tmp + label.offset
+#                     x.lim[2] <- tmp
+#                }
+#                else x.lim <- c(1, Ntip)
+#           }
+#           else switch(type, fan = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.018 * max.yy *
+#                                        cex)
+#                     x.lim <- range(xx) + c(-offset, offset)
+#                } else x.lim <- range(xx)
+#           }, unrooted = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.018 * max.yy *
+#                                        cex)
+#                     x.lim <- c(0 - offset, max(xx) + offset)
+#                } else x.lim <- c(0, max(xx))
+#           }, radial = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.03 * cex)
+#                     x.lim <- c(-1 - offset, 1 + offset)
+#                } else x.lim <- c(-1, 1)
+#           })
+#      }
+#      else if (length(x.lim) == 1) {
+#           x.lim <- c(0, x.lim)
+#           if (phyloORclado && !horizontal)
+#                x.lim[1] <- 1
+#           if (type %in% c("fan", "unrooted") && show.tip.label)
+#                x.lim[1] <- -max(nchar.tip.label * 0.018 * max.yy *
+#                                      cex)
+#           if (type == "radial")
+#                x.lim[1] <- if (show.tip.label)
+#                     -1 - max(nchar.tip.label * 0.03 * cex)
+#           else -1
+#      }
+#      if (phyloORclado && direction == "leftwards")
+#           xx <- x.lim[2] - xx
+#      if (is.null(y.lim)) {
+#           if (phyloORclado) {
+#                if (horizontal)
+#                     y.lim <- c(1, Ntip)
+#                else {
+#                     y.lim <- c(0, NA)
+#                     pin2 <- par("pin")[2]
+#                     strWi <- strwidth(x$tip.label, "inches", cex = cex)
+#                     yy.tips <- yy[1:Ntip] * 1.04
+#                     alp <- try(uniroot(function(a) max(a * yy.tips +
+#                                                             strWi) - pin2, c(0, 1e+06))$root, silent = TRUE)
+#                     if (is.character(alp)) {
+#                          tmp <- max(yy.tips)
+#                          if (show.tip.label)
+#                               tmp <- tmp * 1.5
+#                     }
+#                     else {
+#                          tmp <- if (show.tip.label)
+#                               max(yy.tips + strWi/alp)
+#                          else max(yy.tips)
+#                     }
+#                     if (show.tip.label)
+#                          tmp <- tmp + label.offset
+#                     y.lim[2] <- tmp
+#                }
+#           }
+#           else switch(type, fan = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.018 * max.yy *
+#                                        cex)
+#                     y.lim <- c(min(yy) - offset, max.yy + offset)
+#                } else y.lim <- c(min(yy), max.yy)
+#           }, unrooted = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.018 * max.yy *
+#                                        cex)
+#                     y.lim <- c(0 - offset, max.yy + offset)
+#                } else y.lim <- c(0, max.yy)
+#           }, radial = {
+#                if (show.tip.label) {
+#                     offset <- max(nchar.tip.label * 0.03 * cex)
+#                     y.lim <- c(-1 - offset, 1 + offset)
+#                } else y.lim <- c(-1, 1)
+#           })
+#      }
+#      else if (length(y.lim) == 1) {
+#           y.lim <- c(0, y.lim)
+#           if (phyloORclado && horizontal)
+#                y.lim[1] <- 1
+#           if (type %in% c("fan", "unrooted") && show.tip.label)
+#                y.lim[1] <- -max(nchar.tip.label * 0.018 * max.yy *
+#                                      cex)
+#           if (type == "radial")
+#                y.lim[1] <- if (show.tip.label)
+#                     -1 - max(nchar.tip.label * 0.018 * max.yy * cex)
+#           else -1
+#      }
+#      if (phyloORclado && direction == "downwards")
+#           yy <- y.lim[2] - yy
+#      if (phyloORclado && root.edge) {
+#           if (direction == "leftwards")
+#                x.lim[2] <- x.lim[2] + x$root.edge
+#           if (direction == "downwards")
+#                y.lim[2] <- y.lim[2] + x$root.edge
+#      }
+#      asp <- if (type %in% c("fan", "radial", "unrooted"))
+#           1
+#      else NA
+#      plot.default(0, type = "n", xlim = x.lim, ylim = y.lim, xlab = "",
+#                   ylab = "", axes = FALSE, asp = asp, ...)
+#      if (plot) {
+#           if (is.null(adj))
+#                adj <- if (phyloORclado && direction == "leftwards")
+#                     1
+#           else 0
+#           if (phyloORclado && show.tip.label) {
+#                MAXSTRING <- max(strwidth(x$tip.label, cex = cex))
+#                loy <- 0
+#                if (direction == "rightwards") {
+#                     lox <- label.offset + MAXSTRING * 1.05 * adj
+#                }
+#                if (direction == "leftwards") {
+#                     lox <- -label.offset - MAXSTRING * 1.05 * (1 -
+#                                                                     adj)
+#                }
+#                if (!horizontal) {
+#                     psr <- par("usr")
+#                     MAXSTRING <- MAXSTRING * 1.09 * (psr[4] - psr[3])/(psr[2] -
+#                                                                             psr[1])
+#                     loy <- label.offset + MAXSTRING * 1.05 * adj
+#                     lox <- 0
+#                     srt <- 90 + srt
+#                     if (direction == "downwards") {
+#                          loy <- -loy
+#                          srt <- 180 + srt
+#                     }
+#                }
+#           }
+#           if (type == "phylogram") {
+#                phylogram.plot(x$edge, Ntip, Nnode, xx, yy, horizontal,
+#                               edge.color, edge.width, edge.lty)
+#           }
+#           else {
+#                if (type == "fan") {
+#                     ereorder <- match(z$edge[, 2], x$edge[, 2])
+#                     if (length(edge.color) > 1) {
+#                          edge.color <- rep(edge.color, length.out = Nedge)
+#                          edge.color <- edge.color[ereorder]
+#                     }
+#                     if (length(edge.width) > 1) {
+#                          edge.width <- rep(edge.width, length.out = Nedge)
+#                          edge.width <- edge.width[ereorder]
+#                     }
+#                     if (length(edge.lty) > 1) {
+#                          edge.lty <- rep(edge.lty, length.out = Nedge)
+#                          edge.lty <- edge.lty[ereorder]
+#                     }
+#                     circular.plot(z$edge, Ntip, Nnode, xx, yy, theta,
+#                                   r, edge.color, edge.width, edge.lty)
+#                }
+#                else cladogram.plot(x$edge, xx, yy, edge.color, edge.width,
+#                                    edge.lty)
+#           }
+#           if (root.edge) {
+#                rootcol <- if (length(edge.color) == 1)
+#                     edge.color
+#                else "black"
+#                rootw <- if (length(edge.width) == 1)
+#                     edge.width
+#                else 1
+#                rootlty <- if (length(edge.lty) == 1)
+#                     edge.lty
+#                else 1
+#                if (type == "fan") {
+#                     tmp <- polar2rect(x$root.edge, theta[ROOT])
+#                     segments(0, 0, tmp$x, tmp$y, col = rootcol, lwd = rootw,
+#                              lty = rootlty)
+#                }
+#                else {
+#                     switch(direction, rightwards = segments(0, yy[ROOT],
+#                                                             x$root.edge, yy[ROOT], col = rootcol, lwd = rootw,
+#                                                             lty = rootlty), leftwards = segments(xx[ROOT],
+#                                                                                                  yy[ROOT], xx[ROOT] + x$root.edge, yy[ROOT],
+#                                                                                                  col = rootcol, lwd = rootw, lty = rootlty),
+#                            upwards = segments(xx[ROOT], 0, xx[ROOT], x$root.edge,
+#                                               col = rootcol, lwd = rootw, lty = rootlty),
+#                            downwards = segments(xx[ROOT], yy[ROOT], xx[ROOT],
+#                                                 yy[ROOT] + x$root.edge, col = rootcol, lwd = rootw,
+#                                                 lty = rootlty))
+#                }
+#           }
+#           if (show.tip.label) {
+#                if (is.expression(x$tip.label))
+#                     underscore <- TRUE
+#                if (!underscore)
+#                     x$tip.label <- gsub("_", " ", x$tip.label)
+#                if (phyloORclado) {
+#                     if (align.tip.label) {
+#                          xx.tmp <- switch(direction, rightwards = max(xx[1:Ntip]),
+#                                           leftwards = min(xx[1:Ntip]), upwards = xx[1:Ntip],
+#                                           downwards = xx[1:Ntip])
+#                          yy.tmp <- switch(direction, rightwards = yy[1:Ntip],
+#                                           leftwards = yy[1:Ntip], upwards = max(yy[1:Ntip]),
+#                                           downwards = min(yy[1:Ntip]))
+#                          segments(xx[1:Ntip], yy[1:Ntip], xx.tmp, yy.tmp,
+#                                   lty = align.tip.label.lty)
+#                     }
+#                     else {
+#                          xx.tmp <- xx[1:Ntip]
+#                          yy.tmp <- yy[1:Ntip]
+#                     }
+#                     text(xx.tmp + lox, yy.tmp + loy, x$tip.label,
+#                          adj = adj, font = font, srt = srt, cex = cex,
+#                          col = tip.color)
+#                }
+#                else {
+#                     angle <- if (type == "unrooted")
+#                          XY$axe
+#                     else atan2(yy[1:Ntip], xx[1:Ntip])
+#                     lab4ut <- if (is.null(lab4ut)) {
+#                          if (type == "unrooted")
+#                               "horizontal"
+#                          else "axial"
+#                     }
+#                     else match.arg(lab4ut, c("horizontal", "axial"))
+#                     xx.tips <- xx[1:Ntip]
+#                     yy.tips <- yy[1:Ntip]
+#                     if (label.offset) {
+#                          xx.tips <- xx.tips + label.offset * cos(angle)
+#                          yy.tips <- yy.tips + label.offset * sin(angle)
+#                     }
+#                     if (lab4ut == "horizontal") {
+#                          y.adj <- x.adj <- numeric(Ntip)
+#                          sel <- abs(angle) > 0.75 * pi
+#                          x.adj[sel] <- -strwidth(x$tip.label)[sel] *
+#                               1.05
+#                          sel <- abs(angle) > pi/4 & abs(angle) < 0.75 *
+#                               pi
+#                          x.adj[sel] <- -strwidth(x$tip.label)[sel] *
+#                               (2 * abs(angle)[sel]/pi - 0.5)
+#                          sel <- angle > pi/4 & angle < 0.75 * pi
+#                          y.adj[sel] <- strheight(x$tip.label)[sel]/2
+#                          sel <- angle < -pi/4 & angle > -0.75 * pi
+#                          y.adj[sel] <- -strheight(x$tip.label)[sel] *
+#                               0.75
+#                          text(xx.tips + x.adj * cex, yy.tips + y.adj *
+#                                    cex, x$tip.label, adj = c(adj, 0), font = font,
+#                               srt = srt, cex = cex, col = tip.color)
+#                     }
+#                     else {
+#                          if (align.tip.label) {
+#                               POL <- rect2polar(xx.tips, yy.tips)
+#                               POL$r[] <- max(POL$r)
+#                               REC <- polar2rect(POL$r, POL$angle)
+#                               xx.tips <- REC$x
+#                               yy.tips <- REC$y
+#                               segments(xx[1:Ntip], yy[1:Ntip], xx.tips,
+#                                        yy.tips, lty = align.tip.label.lty)
+#                          }
+#                          if (type == "unrooted") {
+#                               adj <- abs(angle) > pi/2
+#                               angle <- angle * 180/pi
+#                               angle[adj] <- angle[adj] - 180
+#                               adj <- as.numeric(adj)
+#                          }
+#                          else {
+#                               s <- xx.tips < 0
+#                               angle <- angle * 180/pi
+#                               angle[s] <- angle[s] + 180
+#                               adj <- as.numeric(s)
+#                          }
+#                          font <- rep(font, length.out = Ntip)
+#                          tip.color <- rep(tip.color, length.out = Ntip)
+#                          cex <- rep(cex, length.out = Ntip)
+#                          for (i in 1:Ntip) text(xx.tips[i], yy.tips[i],
+#                                                 x$tip.label[i], font = font[i], cex = cex[i],
+#                                                 srt = angle[i], adj = adj[i], col = tip.color[i])
+#                     }
+#                }
+#           }
+#           if (show.node.label)
+#                text(xx[ROOT:length(xx)] + label.offset, yy[ROOT:length(yy)],
+#                     x$node.label, adj = adj, font = font, srt = srt,
+#                     cex = cex)
+#      }
+#      L <- list(type = type, use.edge.length = use.edge.length,
+#                node.pos = node.pos, node.depth = node.depth, show.tip.label = show.tip.label,
+#                show.node.label = show.node.label, font = font, cex = cex,
+#                adj = adj, srt = srt, no.margin = no.margin, label.offset = label.offset,
+#                x.lim = x.lim, y.lim = y.lim, direction = direction,
+#                tip.color = tip.color, Ntip = Ntip, Nnode = Nnode, root.time = x$root.time,
+#                align.tip.label = align.tip.label)
+#      return(list(edge = xe, xx = xx, yy = yy))
+# }
+#
+#
+# plotgridtree_idfgd_upd <- function(mastertre){
+#      if(!is.null(mastertre$edge.length)){
+#           tre = mastertre
+#           tre$edge.length = NULL
+#      }else{
+#           tre = mastertre
+#      }
+#      res = getphylocoords(tre,plot = F)
+#      grid(col = 'grey', lty = 2)
+#      plot.phylo(tre, y.lim = c(0,max(res$yy)), edge.width = 2,
+#                 main = 'Select Foreground branches on the tree')
+#      ancnodeind = which(res$xx == 0)
+#      points(res$xx[ancnodeind], res$yy[ancnodeind])
+#      qnts = quantile(c(0:max(res$xx)))
+#      doneloc <- qnts[2]
+#      undoloc <- qnts[4]
+#      text(doneloc,0,'Done')
+#      text(undoloc,0,'Undo')
+#      axis(2)
+#      #return(res)
+#      ctr = 1
+#      xy = locator(n = 1)
+#      valids = res$xx != 0
+#      yids = c()
+#      edgs = c()
+#      alledgexlims <- sapply(1:max(res$edge),getancedgexlims,res)
+#      matedgexlims <- matrix(unlist(alledgexlims), nrow = max(res$edge), byrow = T)
+#      #while(!(between(xy$x, doneloc-0.2,doneloc+2) & between(xy$y,-0.2,0.2))){
+#      while(!(between(xy$x, doneloc-0.2,doneloc+2) & (xy$y<1))){
+#           if(ctr){
+#                locy = xy$y
+#                distid = abs(res$yy-rep(locy,length(res$yy)))
+#                selids <- sapply(1:nrow(matedgexlims),function(x){between(xy$x,matedgexlims[x,1],matedgexlims[x,2])})
+#                #nodeid = setdiff(which(distid == min(distid[valids])),which(!valids))
+#                nodeid = setdiff(which(distid == min(distid[valids&selids])),which(!(valids&selids)))
+#                yids = c(yids, nodeid)
+#                nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#                drawedge(nodeanc,nodeid,res,col='red')
+#                edgs = c(c(nodeanc, nodeid))
+#                print(edgs)
+#                ctr = 0
+#                xy = locator(n = 1)
+#           }else{
+#                #if(between(xy$x, undoloc-0.2,undoloc+2) & between(xy$y,-0.2,0.2)){
+#                if(between(xy$x, undoloc-0.2,undoloc+2) & (xy$y<1)){
+#                     nodeid = tail(edgs,1)
+#                     nodeanc = tail(edgs,2)[1]
+#                     drawedge(nodeanc,nodeid,res,col='black')
+#                     yids = yids[1:(length(yids)-1)]
+#                     if(length(edgs) == 2){
+#                          edgs = c()
+#                     }else{
+#                          edgs = edgs[1:(length(edgs)-2)]
+#                     }
+#                     xy = locator(n = 1)
+#                }else{
+#                     locy = xy$y
+#                     distid = abs(res$yy-rep(locy,length(res$yy)))
+#                     selids <- sapply(1:nrow(matedgexlims),function(x){between(xy$x,matedgexlims[x,1],matedgexlims[x,2])})
+#                     #nodeid = setdiff(which(distid == min(distid[valids])),which(!valids))
+#                     nodeid = setdiff(which(distid == min(distid[valids&selids])),which(!(valids&selids)))
+#                     if(!(nodeid %in% yids)){
+#                          yids = c(yids, nodeid)
+#                          nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#                          drawedge(nodeanc,nodeid,res,col='red')
+#                          edgs = c(edgs,c(nodeanc, nodeid))
+#                          print(edgs)
+#                     }
+#                     xy = locator(n = 1)
+#                }
+#           }
+#      }
+#      matrix(edgs,length(edgs)/2,byrow = T)
+# }
+#
+# shiny_click_edgeindex <- function(loc, tre){
+#      res = getphylocoords(tre,plot = F)
+#      #print(res)
+#      ancnodeind = which(res$xx == 0)
+#      valids = res$xx != 0
+#      #print(paste0('valids',valids))
+#      alledgexlims <- sapply(1:max(res$edge),getancedgexlims,res)
+#      matedgexlims <- matrix(unlist(alledgexlims), nrow = max(res$edge), byrow = T)
+#      locy = loc$y
+#      #print(loc)
+#      distid = abs(res$yy-rep(locy,length(res$yy)))
+#      #print(distid)
+#      selids <- sapply(1:nrow(matedgexlims),function(x){between(loc$x,matedgexlims[x,1],matedgexlims[x,2])})
+#      #print(paste0('selids',selids))
+#      #nodeid = setdiff(which(distid == min(distid[valids])),which(!valids))
+#      nodeid = setdiff(which(distid == min(distid[valids&selids])),which(!(valids&selids)))
+#      #nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#      edgeid = which(res$edge[,2] == nodeid)
+#      #print(paste0('edgeid',edgeid))
+#      edgeid
+# }
+#
+# getancedgexlims <- function(nodeid, res){
+#      extnodes = setdiff(res$edge[,2],res$edge[,1])
+#      #print(paste0('extnodes', extnodes))
+#      nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#      #print(nodeanc)
+#      if(length(nodeanc)==0){
+#           #print('t')
+#           return(c(-0.5,res$xx[nodeid]+0.5))
+#      }else{
+#           if(nodeid %in% extnodes){
+#                return(c(res$xx[nodeanc]-0.5,res$xx[nodeid]+25))
+#           }else{
+#                return(c(res$xx[nodeanc]-0.5,res$xx[nodeid]+0.5))
+#           }
+#      }
+# }
+#
+# plotgridtree_idfgd_upd <- function(mastertre){
+#      if(!is.null(mastertre$edge.length)){
+#           tre = mastertre
+#           tre$edge.length = NULL
+#      }else{
+#           tre = mastertre
+#      }
+#      res = getphylocoords(tre,plot = F)
+#      grid(col = 'grey', lty = 2)
+#      plot.phylo(tre, y.lim = c(0,max(res$yy)), edge.width = 2,
+#                 main = 'Select Foreground branches on the tree')
+#      ancnodeind = which(res$xx == 0)
+#      points(res$xx[ancnodeind], res$yy[ancnodeind])
+#      qnts = quantile(c(0:max(res$xx)))
+#      doneloc <- qnts[2]
+#      undoloc <- qnts[4]
+#      text(doneloc,0,'Done')
+#      text(undoloc,0,'Undo')
+#      axis(2)
+#      #return(res)
+#      ctr = 1
+#      xy = locator(n = 1)
+#      valids = res$xx != 0
+#      yids = c()
+#      edgs = c()
+#      alledgexlims <- sapply(1:max(res$edge),getancedgexlims,res)
+#      matedgexlims <- matrix(unlist(alledgexlims), nrow = max(res$edge), byrow = T)
+#      #while(!(between(xy$x, doneloc-0.2,doneloc+2) & between(xy$y,-0.2,0.2))){
+#      while(!(between(xy$x, doneloc-0.2,doneloc+2) & (xy$y<1))){
+#           if(ctr){
+#                locy = xy$y
+#                distid = abs(res$yy-rep(locy,length(res$yy)))
+#                selids <- sapply(1:nrow(matedgexlims),function(x){between(xy$x,matedgexlims[x,1],matedgexlims[x,2])})
+#                #nodeid = setdiff(which(distid == min(distid[valids])),which(!valids))
+#                nodeid = setdiff(which(distid == min(distid[valids&selids])),which(!(valids&selids)))
+#                yids = c(yids, nodeid)
+#                nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#                drawedge(nodeanc,nodeid,res,col='red')
+#                edgs = c(c(nodeanc, nodeid))
+#                print(edgs)
+#                ctr = 0
+#                xy = locator(n = 1)
+#           }else{
+#                #if(between(xy$x, undoloc-0.2,undoloc+2) & between(xy$y,-0.2,0.2)){
+#                if(between(xy$x, undoloc-0.2,undoloc+2) & (xy$y<1)){
+#                     nodeid = tail(edgs,1)
+#                     nodeanc = tail(edgs,2)[1]
+#                     drawedge(nodeanc,nodeid,res,col='black')
+#                     yids = yids[1:(length(yids)-1)]
+#                     if(length(edgs) == 2){
+#                          edgs = c()
+#                     }else{
+#                          edgs = edgs[1:(length(edgs)-2)]
+#                     }
+#                     xy = locator(n = 1)
+#                }else{
+#                     locy = xy$y
+#                     distid = abs(res$yy-rep(locy,length(res$yy)))
+#                     selids <- sapply(1:nrow(matedgexlims),function(x){between(xy$x,matedgexlims[x,1],matedgexlims[x,2])})
+#                     #nodeid = setdiff(which(distid == min(distid[valids])),which(!valids))
+#                     nodeid = setdiff(which(distid == min(distid[valids&selids])),which(!(valids&selids)))
+#                     if(!(nodeid %in% yids)){
+#                          yids = c(yids, nodeid)
+#                          nodeanc <- res$edge[res$edge[,2]==nodeid,1]
+#                          drawedge(nodeanc,nodeid,res,col='red')
+#                          edgs = c(edgs,c(nodeanc, nodeid))
+#                          print(edgs)
+#                     }
+#                     xy = locator(n = 1)
+#                }
+#           }
+#      }
+#      matrix(edgs,length(edgs)/2,byrow = T)
+# }
+#
+# drawedge <- function(a,b,res,col='red'){
+#      drawline(c(res$xx[a],res$yy[a]),c(res$xx[b],res$yy[b]),col)
+# }
+# drawline <- function(a,b,col='red'){
+#      x1 = a[1]
+#      y1 = a[2]
+#      x2 = b[1]
+#      y2 = b[2]
+#      lines(c(x1,x1),c(y1,y2),col=col,lwd = 2)
+#      lines(c(x1,x2),c(y2,y2),col=col,lwd = 2)
+# }
+#
+# plottreewgrid <- function(tre){
+#      res = getphylocoords(tre,plot = F)
+#      plot.phylo(tre, y.lim = c(0,max(res$yy)))
+#      maxx = max(res$xx)
+#      qnts = quantile(c(0:maxx))
+#      doneloc <- qnts[2]
+#      undoloc <- qnts[4]
+#      text(doneloc,0,'Done')
+#      text(undoloc,0,'Undo')
+#      #print(res)
+#      grid(col = 'grey', lty = 2)
+#      #axis(1)
+#      axis(2)
+#      return(res)
+# }
+#
+#
+# assignfgdlength <- function(edgs,bintre, plot = T){
+#      bintre$edge.length=rep(0,nrow(bintre$edge))
+#      edginds = c()
+#      for(ii in 1:nrow(edgs)){
+#           #ii = 1
+#           #bintre <- binfgd
+#           inds = sapply(c(1:nrow(bintre$edge)),function(x){
+#                if(edgs[ii,1] == bintre$edge[x,1] & edgs[ii,2] == bintre$edge[x,2]){
+#                     return(ii)
+#                }else{
+#                     NA
+#                }
+#           })
+#           edginds = c(edginds, which(!is.na(inds)))
+#      }
+#      #print(edginds)
+#      bintre$edge.length[edginds] = rep(1,length(edginds))
+#      if(plot){
+#           plot.phylo(bintre)
+#      }
+#      bintre
+# }
+#
+# selectforegroundbranches <- function(mastertree, ...){
+#      require(shiny)
+#      require(dplyr)
+#      require(data.table)
+#      app <- list(
+#           ui = fluidPage(
+#                fluidRow(
+#                     h3('Select foreground branches')
+#                ),
+#                fluidRow(
+#                     column(10,align = 'center',
+#                            mainPanel(plotOutput('trep',width = '150%',
+#                                                 height = '1000px',click='pltclick'))),
+#                     column(1,align = 'left',
+#                            mainPanel(h4("",style = "padding:60px;"),
+#                            actionButton('fgdundo','Undo Selection'),
+#                            h3(''),
+#                            actionButton('fgdreset','Reset Selection'),
+#                            h3(''),
+#                            actionButton('fgdend','End Selection'))),
+#                     column(1)
+#                     )
+#           ),
+#           server = function(input, output){
+#                dir.create('clicklogs', showWarnings = F)
+#                logf <- paste0('./clicklogs/usr.click.r',round(runif(1),5))
+#                file.create(logf)
+#                filcont <- reactiveValues(edgs = NULL)
+#                observeEvent(input$fgdundo,{
+#                     if(file.info(logf)$size){
+#                          usrclick <- unique(fread(logf, header = F)$V1)
+#                          #print(paste0('newf', head(usrclick,-1)))
+#                          if(length(head(usrclick, -1)) >= 1){
+#                               write.table(head(usrclick,-1), logf, quote = F, col.names = F, row.names = F)
+#                               filcont$edgs <- head(usrclick,-1)
+#                          }else{
+#                               file.create(logf, showWarnings = F)
+#                               filcont$edgs <- NULL
+#                          }
+#                     }
+#                })
+#                edge_cls <- reactive({
+#                     outtre <- mastertree
+#                     outtre$edge.length <- NULL
+#                     if(!is.null(input$pltclick)){
+#                          edg <- shiny_click_edgeindex(input$pltclick, outtre)
+#                          write.table(edg, logf, quote = F, col.names = F, row.names = F, append = T)
+#                          filcont$edgs <- unique(fread( logf, header = F)$V1)
+#                     }
+#                })
+#                observeEvent(input$fgdreset, {
+#                     file.create(logf, showWarnings = F)
+#                     filcont$edgs <- NULL
+#                })
+#                observeEvent(input$fgdend, {
+#                     edgs <- filcont$edgs
+#                     outtre <- mastertree
+#                     outtre$edge.length <- rep(0, length(outtre$edge.length))
+#                     outtre$edge.length[edgs] <- 1
+#                     stopApp(outtre)
+#                })
+#                output$trep <- renderPlot({
+#                     edge_cls()
+#                     usrclick <- filcont$edgs
+#                     outtre <- mastertree
+#                     outtre$edge.length <- NULL
+#                     edcol <- rep('black', nrow(outtre$edge))
+#                     edwid <- rep(1, length(edcol))
+#                     #edcol[edge_mem()] <- 'red'
+#                     if(!is.null(usrclick)){
+#                          edcol[usrclick] <- 'red'
+#                          edwid[usrclick] <- 2
+#                     }
+#                     #if(exists('speciesNames')){
+#                     #     if(all(outtre$tip.label %in% rownames(speciesNames))){
+#                     #          outtre$tip.label <- speciesNames[outtre$tip,]
+#                     #     }
+#                     #}
+#                     plot.phylo(outtre, edge.color = edcol, edge.width = edwid)
+#                })
+#           }
+#      )
+#      bint <- runApp(app)
+#      plot.phylo(bint)
+#      return(bint)
+# }
+#comment everything out for now
+if(T){
+wilcoxGMTall=function(vals, annotList){
+  reslist=list()
+  for ( n in names(annotList)){
+    reslist[[n]]=wilcoxGMT(vals, annotList[[n]])
+    message(paste0(nrow(reslist[[n]]), " results for annotation set ", n))
+  }
+  reslist
+}
+
+wilcoxGMT=function(vals, gmt, simple=F, use.all=F, num.g=10,genes=NULL){
+     #vals = resstat
+     #gmt = annotlist
+     #simple = F
+     #use.all = F
+     #num.g = 10
+     #genes = NULL
+  vals=vals[!is.na(vals)]
+  if(is.null(genes)){
+    genes=unique(unlist(gmt$genesets))
+  }
+  out=matrix(nrow=length(gmt$genesets), ncol=3)
+  rownames(out)=gmt$geneset.names
+  colnames(out)=c("stat", "pval", "genes")
+  out=as.data.frame(out)
+  genes=intersect(genes, names(vals))
+  show(length(intersect(genes, names(vals))))
+  show(length(genes))
+  #vals=rank(vals[genes])
+  for( i in 1:nrow(out)){
+
+    curgenes=intersect(genes,gmt$genesets[[i]])
+
+    bkgenes=setdiff(genes, curgenes)
+
+    if (length(bkgenes)==0 || use.all){
+      bkgenes=setdiff(names(vals), curgenes)
+    }
+    if(length(curgenes)>=num.g & length(bkgenes)>2){
+      if(!simple){
+        res=wilcox.test(x = vals[curgenes], y=vals[bkgenes])
+
+        out[i, 1:2]=c(res$statistic/(length(bkgenes)*length(curgenes)), res$p.value)
+      }
+      else{
+        valsr=rank(vals[genes])
+        out[i, 1:2]=simpleAUCgenesRanks(valsr[curgenes],valsr[bkgenes])
+
+      }
+      if (out[i,1]>0.5){
+        oo=order(vals[curgenes], decreasing = T)
+        granks=rank(-vals)
+      }
+      else{
+        oo=order(vals[curgenes], decreasing = F)
+        granks=rank(vals)
+      }
+      # show(vals[curgenes][oo])
+
+      nn=paste(curgenes[oo],round((granks[curgenes])[oo],2),sep=':' )
+      out[i,3]=length(curgenes)
+      out[i,4]=paste(nn, collapse = ", ")
+
+    }
+
+  }
+  # hist(out[,2])
+  out[,1]=out[,1]-0.5
+  #out=cbind(out,BH(out[,2]))
+  #out=cbind(out,p.adjust(out[,2], method = 'BH'))
+  #colnames(out)[ncol(out)]="p.adj"
+
+  # out=out[, c(1,2,3,5,4)]
+  out=out[!is.na(out[,2]),]
+  #out=out[out[,3]<0.2,]
+  out=out[order(-abs(out[,1])),]
+}
+
+
+simpleAUCmat=function(lab, value){
+  value=t(apply(rbind(value),1,rank))
+  posn=sum(lab>0)
+  negn=sum(lab<=0)
+  if(posn<2||negn<2){
+    auc=rep(NA, nrow(value))
+    pp=rep(NA, nrow(value))
+  }
+  else{
+    stat=apply(value[,lab>0, drop=F],1,sum)-posn*(posn+1)/2
+
+    auc=stat/(posn*negn)
+    mu=posn*negn/2
+    sd=sqrt((posn*negn*(posn+negn+1))/12)
+    stattest=apply(cbind(stat, posn*negn-stat),1,max)
+    pp=(2*pnorm(stattest, mu, sd, lower.tail = F))
+  }
+  return(list(auc=auc, pp=pp))
+}
+
+
+myAUC<-function(labels, values){
+  ii=which(!is.na(values))
+  values=values[ii]
+  labels=labels[ii]
+  posii=which(labels>0)
+  negii=which(labels<=0)
+  posn=length(posii)
+  negn=length(negii)
+  posval=values[posii]
+  negval=values[negii]
+  res=wilcox.test(posval, negval, alternative="greater", conf.int=TRUE, exact=F, correct=F);
+
+  myres=list()
+  myres$low=res$conf.int[1]
+  myres$high=res$conf.int[2]
+
+  myres$auc=(res$statistic)/(posn*negn)
+  myres$pval=res$p.value
+  return(myres)
+}
+}
+#comment everything out
+
+require(dplyr)
+require(ggplot2)
+
+if(F){
+multiplot = function(..., plotlist=NULL, file, cols=1, layout=NULL, widths=NULL, heights=NULL, flip=F) {
+  require(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  if(flip){
+    layout=t(layout)
+  }
+  if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+
+
+
+    if(!is.null(widths)){
+      widths=widths
+    }
+    else{
+      widths = unit(rep_len(1, ncol(layout)), "null")
+    }
+    if(!is.null(heights)){
+      heights=heights
+    }
+    else{
+      heights = unit(rep_len(1, nrow(layout)), "null")
+    }
+    show(widths)
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout), widths = widths, heights = heights )))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+
+plotAllHists=function(resAll){
+  plotlist=list()
+  count=0;
+  for(i in 1:length(resAll$res)){
+    count=count+1
+    p=resAll$res[[i]]$P
+    s= sign(resAll$res[[i]]$Rho)
+    ii=which(s!=0)
+    p=p[ii]
+    s=s[ii]
+    plotlist[[count]]=plotHists(p, as.factor(s))+ggtitle(names(resAll$res)[i])
+  }
+  return(plotlist)
+
+}
+
+plotAllHistsWithPerm=function(resAll, resAllSim, resAllPerm=NULL, updown=T){
+  plotlist=list()
+  count=1;
+  for(i in 1:length(resAll$res)){
+    #  count=count+1
+    realp=resAll$res[[i]]$P
+    reals= sign(resAll$res[[i]][[1]])
+    ii=which(reals!=0)
+    realp=realp[ii]
+    reals=reals[ii]
+
+
+    simp=resAllSim[[i]]
+    sims=sign(simp)
+    simp=abs(simp)
+    if(updown){
+      show("UpDown")
+      if(!is.null(resAllPerm)){
+        permp=resAllPerm[[i]]
+        perms=sign(permp)
+        permp=abs(permp)
+
+        vals=c(tmp1<-realp[reals>0], tmp2<-permp[perms>0], tmp3<-simp[sims>0])
+        vals.grp=ordered(rep(c("Real", "Permuted","Simulated"), c(length(tmp1), length(tmp2),length(tmp3)), levels=c("Real", "Simulated","Permuted")))
+      }
+      else{
+        vals=c(tmp1<-realp[reals>0], tmp3<-simp[sims>0])
+        vals.grp=rep(c("Real","Simulated"), c(length(tmp1), length(tmp3)))
+      }
+
+      plotlist[[count]]=plotHists(vals, as.factor(vals.grp))+ggtitle(paste(names(resAll$res)[i], "Positive"))+theme_bw()+ theme(legend.position="none")
+      count=count+1
+
+      if(!is.null(resAllPerm)){
+        vals=c(tmp1<-realp[reals<0], tmp2<-permp[perms<0], tmp3<-simp[sims<0])
+        vals.grp=ordered(rep(c("Real", "Permuted","Simulated"), c(length(tmp1), length(tmp2),length(tmp3)), levels=c("Real", "Simulated","Permuted")))
+      }
+      else{
+        vals=c(tmp1<-realp[reals<0], tmp3<-simp[sims<0])
+        vals.grp=rep(c("Real","Simulated"), c(length(tmp1), length(tmp3)))
+      }
+
+      plotlist[[count]]=plotHists(vals, as.factor(vals.grp))+ggtitle(paste(names(resAll$res)[i], "Negative"))+theme_bw()
+      count=count+1
+
+    }
+
+    else{
+      show("All")
+      if(!is.null(resAllPerm)){
+        permp=resAllPerm[[i]]
+        perms=sign(permp)
+        permp=abs(permp)
+
+        vals=c(tmp1<-realp[], tmp2<-permp[], tmp3<-simp[])
+        vals.grp=ordered(rep(c("Real", "Permuted","Simulated"), c(length(tmp1), length(tmp2),length(tmp3)), levels=c("Real", "Simulated","Permuted")))
+      }
+      else{
+        vals=c(tmp1<-realp[], tmp3<-simp[])
+        vals.grp=rep(c("Real","Simulated"), c(length(tmp1), length(tmp3)))
+      }
+      show(count)
+      plotlist[[count]]=plotHists(vals, as.factor(vals.grp))+ggtitle(paste(names(resAll$res)[i], "All"))+theme_bw()
+      count=count+1
+      show(count)
+    }
+  }
+  return(plotlist)
+
+}
+
+
+plotHists=function(data, grp, ...){
+  ii=which(is.na(data))
+  if(length(ii)>0){
+    data=data[-ii]
+    grp=grp[-ii]
+  }
+  x=data.frame(data=data)
+  x$grp=grp
+  ggplot(x, aes(data, fill=grp))+geom_histogram(aes(y=..density..),position="dodge",  alpha=1,right=T, origin=0, ...)
+}
+
+
+
+plotContinuousChar=function(gene, treeObj, tip.vals, tip.vals.ref=NULL, rank=F, nlevels=8, type="c", col=NULL, residfun=residLO, useDiff=T){
+  #get the tree projection
+  tip.vals=tip.vals[!is.na(tip.vals)]
+  op <- par(no.readonly = TRUE)
+  on.exit(par(op))
+  stopifnot(gene %in% names(treeObj$trees))
+  tree=treeObj$trees[[gene]]
+  stopifnot(!is.null(names(tip.vals)))
+  both=intersect(tree$tip.label, names(tip.vals))
+
+  stopifnot(length(both)>10)
+
+
+  torm=setdiff(treeObj$masterTree$tip.label, both)
+  tree=unroot(pruneTree(tree, both))
+  allreport=treeObj$report[,both]
+  ss=rowSums(allreport)
+  iiboth=which(ss==length(both))
+
+
+  ee=edgeIndexRelativeMaster(tree, treeObj$masterTree)
+  ii= match(namePaths(ee,T), colnames(treeObj$paths))
+
+  allbranch=treeObj$paths[iiboth,ii]
+
+  allbranch=scaleMat_c(allbranch)
+  show(sum(is.na(allbranch)))
+  nv=projection(t(allbranch), method="AVE", returnNV = T)
+
+  proj=residfun(tree$edge.length, nv)
+  treeChar=edgeVars(tree, tip.vals, useDiff=useDiff)
+
+
+  nn=nameEdges(tree)
+  nn[nn!=""]=speciesNames[nn[nn!=""], ]
+  par(mfrow=c(2,2), mai=rep(0.7,4))
+
+  plotWtext(sqrt(nv), sqrt(tree$edge.length), xlab="char", ylab="Gene branch length", labels = nn)
+  if(!is.null(tip.vals.ref)){
+    treeCharRef=edgeVars(tree, tip.vals.ref, useDiff=useDiff)
+    proj=resid(rbind(proj), model.matrix(~1+treeCharRef$edge.length))[1,]
+  }
+  plotWtext(treeChar$edge.length, proj, xlab="char", ylab="Gene branch length", labels = nn)
+  stat=cor.test(treeChar$edge.length, proj, method="s")
+  mtext(paste0("r=", round(stat$estimate,2), ";  p-value=", format.pval(stat$p.value)), side = 3, line=1)
+
+
+
+  tree$tip.label=speciesNames[tree$tip,1]
+  col=colorpanel(nlevels, "blue", "red", "yellow3")
+
+
+  vals=treeChar$edge.length
+  if(rank){
+    vals=rank(vals)
+  }
+  plot.phylo(tree, use.edge.length = F,type=type,edge.color=col[cut(vals, nlevels)], edge.width=3.5, lab4ut="axial", cex=0.6)
+  title("character")
+
+  vals=proj
+  if(rank){
+    vals=rank(vals)
+  }
+  plot.phylo(tree, use.edge.length = F,type=type,edge.color=col[cut(vals, nlevels)], edge.width=3.5, lab4ut="axial", cex=0.6)
+  title("projection")
+
+
+
+}
+
+treePlot=function(tree, vals=NULL,rank=F, nlevels=5, type="c", col=NULL){
+  op <- par(no.readonly = TRUE)
+  on.exit(par(op))
+  if(is.null(vals)){
+    vals=tree$edge.length
+  }
+  vals=as.numeric(vals)
+  if(rank){
+    vals=rank(vals)
+  }
+  layout(matrix(c(1,2), ncol=1),heights=c(10,2))
+  if(is.null(col)){
+    col=colorpanel(nlevels, "blue", "red")
+  }
+  tree$tip.label=speciesNames[tree$tip,1]
+  plot.phylo(tree, use.edge.length = F,type=type,edge.color=col[cut(vals, nlevels)], edge.width=3.5, lab4ut="axial", cex=0.6)
+
+
+  min.raw <- min(vals, na.rm = TRUE)
+  max.raw <- max(vals, na.rm = TRUE)
+  z <- seq(min.raw, max.raw, length = length(col))
+
+  par(mai=c(1,0.5,0,0.5))
+  image(z = matrix(z, ncol = 1), col = col, breaks = seq(min.raw, max.raw, length.out=nlevels+1),
+        xaxt = "n", yaxt = "n")
+  #par(usr = c(0, 1, 0, 1))
+  lv <- pretty(seq(min.raw, max.raw, length.out=nlevels+1))
+  scale01 <- function(x, low = min(x), high = max(x)) {
+    x <- (x - low)/(high - low)
+    x
+  }
+  xv <- scale01(as.numeric(lv), min.raw, max.raw)
+  axis(1, at = xv, labels = lv)
+}
+
+}
+treePlot=function(tree, vals=NULL,rank=F, nlevels=5, type="c", col=NULL){
+  op <- par(no.readonly = TRUE)
+  on.exit(par(op))
+  if(is.null(vals)){
+    vals=tree$edge.length
+  }
+  vals=as.numeric(vals)
+  if(rank){
+    vals=rank(vals)
+  }
+  layout(matrix(c(1,2), ncol=1),heights=c(10,2))
+  if(is.null(col)){
+    col=colorpanel(nlevels, "blue", "red")
+  }
+  #tree$tip.label=speciesNames[tree$tip,1]
+  plot.phylo(tree, use.edge.length = F,type=type,edge.color=col[cut(vals, nlevels)], edge.width=3.5, lab4ut="axial", cex=0.6)
+
+
+  min.raw <- min(vals, na.rm = TRUE)
+  max.raw <- max(vals, na.rm = TRUE)
+  z <- seq(min.raw, max.raw, length = length(col))
+
+  par(mai=c(1,0.5,0,0.5))
+  image(z = matrix(z, ncol = 1), col = col, breaks = seq(min.raw, max.raw, length.out=nlevels+1),
+        xaxt = "n", yaxt = "n")
+  #par(usr = c(0, 1, 0, 1))
+  lv <- pretty(seq(min.raw, max.raw, length.out=nlevels+1))
+  scale01 <- function(x, low = min(x), high = max(x)) {
+    x <- (x - low)/(high - low)
+    x
+  }
+  xv <- scale01(as.numeric(lv), min.raw, max.raw)
+  axis(1, at = xv, labels = lv)
+}
+treePlotNew=function(tree, maintitle= NULL, vals=NULL, rank=F, nlevels=5, type="c", col=NULL, useedge=F, doreroot=F, rerootby=NULL, species.list=NULL, species.names=NULL, speclist1=NULL, speclist2=NULL, aligntip=F,
+ colpan1="blue",colpan2="red",colpanmid=NULL,plotspecies=NULL,edgetype=NULL,textsize=0.6,
+ colbarlab="",splist2sym="psi"){
+ #bold speclist1, star speclist2
+ #reroot before plotting to match up vals
+  library(gplots)
+  if(is.null(vals)){
+    vals=tree$edge.length
+  }
+  vals=as.numeric(vals)
+  faketree=tree
+  faketree$edge.length=vals
+  layout(matrix(c(1,2), ncol=1),heights=c(10,2))
+  if(is.null(col)){
+    if (is.null(colpanmid)) {
+      col=colorpanel(nlevels, colpan1, colpan2)
+    } else {
+      col=colorpanel(nlevels, colpan1, colpanmid, colpan2)
+    }
+  }
+  if (doreroot) {
+    rerootby=intersect(rerootby,tree$tip.label)
+    if (length(rerootby) > 0) {
+      #mrcanode=getMRCA(tree,rerootby)
+      #tree=root(tree,node=mrcanode,resolve.root=T)
+      #faketree=root(faketree,node=mrcanode,resolve.root=T)
+      #vals=faketree$edge.length
+        tree=root(tree,rerootby,resolve.root=T)
+        faketree=root(faketree,rerootby,resolve.root=T)
+        vals=faketree$edge.length
+    } else {
+      print("No species in rerootby in tree! Leaving tree unrooted.")
+    }
+  }
+  if (!is.null(species.list)) {
+    tree=pruneTree(tree,species.list)
+    faketree=pruneTree(tree,species.list)
+    vals=faketree$edge.length
+  }
+  if (!is.null(species.names)) {
+    for(s in 1:length(tree$tip.label)) {
+      if (tree$tip.label[s] %in% row.names(species.names)) {
+        tree$tip.label[s] <- species.names[,1][which(row.names(species.names)==tree$tip.label[s])]
+        }
+    }
+  }
+  pfonts <- c(rep(1,length(tree$tip.label)))
+  tipcol <- c(rep("black",length(tree$tip.label)))
+  if (!is.null(speclist1)) {
+    pfonts[which(tree$tip.label %in% speclist1)] <- 2
+    tipcol[which(tree$tip.label %in% speclist1)] <- "blue"
+  }  
+  if (! is.null(plotspecies)) { #only plot certain species names by making others white
+    tipcol[which(tree$tip.label %in% plotspecies == FALSE)] <- "white"
+  }
+  if (!is.null(speclist2)) {
+    toadd <- which(tree$tip.label %in% speclist2)
+    
+    #tree$tip.label[toadd] <- paste(tree$tip.label[toadd],"*",sep="_")
+    #tree$tip.label[toadd] <- paste(tree$tip.label[toadd],expression(psi),sep="_")
+    #tree$tip.label[toadd] <- expression(paste(tree$tip.label[toadd], psi, sep="_"))
+    tree$tip.label[toadd] <- str_replace_all(tree$tip.label[toadd]," ","~")
+    tree$tip.label[toadd] <- as.expression(parse(text=paste(tree$tip.label[toadd],"~",splist2sym,sep="")))
+    #for (i in 1:length(toadd)) {
+      #tree$tip.label[toadd[i]] <- bquote(.(tree$tip.label[toadd[i]]) ~ psi)
+      #tree$tip.label[toadd[i]] <- str_replace_all(tree$tip.label[toadd[i]]," ","_")
+      #tree$tip.label[toadd[i]] <- parse(text = paste(tree$tip.label[toadd[i]], "psi"))
+      #tree$tip.label[toadd[i]] <- expression(paste(eval(tree$tip.label[toadd[i]]), psi, sep="_"))
+      #tree$tip.label[toadd[i]] <- paste(tree$tip.label[toadd[i]],expression(psi),sep="_")
+      #tree$tip.label[toadd[i]] <- substitute(paste(tt, psi), list(tt=tree$tip.label[toadd[i]]))
+    #}
+  }
+  if (is.null(edgetype)) {
+    edgetype = c(rep(1,length(vals))) #does not play well with rerootby
+  }
+  calcoff <- quantile(tree$edge.length[tree$edge.length>0],0.25)
+  par(mar=c(2,1,0,0.2)+0.1)
+  oldpar = par()
+  #par(mar=c(0,0,0,0))
+  par(omi=c(0,0,0,0.0001))
+  #plotobj = plot.phylo(tree, use.edge.length = useedge,type=type,edge.color=col[cut(vals, nlevels)], edge.width=4, edge.lty=edgetype,lab4ut="axial", cex=textsize, align.tip.label=aligntip,font=pfonts,label.offset=calcoff,
+  #tip.color=tipcol,no.margin=T,plot=T, main = maintitle)
+  plotobj = plot.phylo(tree, use.edge.length = useedge,type=type,edge.color=col[cut(vals, breaks = quantile(vals, probs = seq(0,1, length.out = nlevels+1)), include.lowest = T, right = T)], edge.width=4, edge.lty=edgetype,lab4ut="axial", cex=textsize, align.tip.label=aligntip,font=pfonts,label.offset=calcoff,
+  tip.color=tipcol,no.margin=T,plot=T, main = maintitle)
+  #par(mar=oldpar)
+  
+  min.raw <- min(vals, na.rm = TRUE)
+  max.raw <- max(vals, na.rm = TRUE)
+  z <- seq(min.raw, max.raw, length = length(col))
+  #z <- quantile(vals, probs = seq(0,1,length = length(col)))
+  
+  par(mai=c(1,0.5,0,0.5))
+  #par(mai=c(0.5,0.5,0,0.5))
+  #image(z = matrix(z, ncol = 1), col = col, breaks = seq(min.raw, max.raw, length.out=nlevels+1), 
+  #      xaxt = "n", yaxt = "n")
+  image(z = matrix(z, ncol = 1), col = col, breaks = seq(min.raw, max.raw, length.out=nlevels+1), 
+        xaxt = "n", yaxt = "n")
+  #image(z = matrix(z, ncol = 1), col = col, breaks = quantile(vals, probs = seq(0, 1, length.out=nlevels+1)), 
+  #      xaxt = "n", yaxt = "n")
+  #par(usr = c(0, 1, 0, 1))
+  lv <- pretty(seq(min.raw, max.raw, length.out=nlevels+1))
+  lv1 <- seq(min.raw, max.raw, length.out=nlevels+1)
+  print(lv)
+  lv2 <- quantile(vals, probs = seq(0,1, length.out = nlevels+1))
+  print(lv2)
+  scale01 <- function(x, low = min(x), high = max(x)) {
+    x <- (x - low)/(high - low)
+    x
+  }
+  xv <- scale01(as.numeric(lv), min.raw, max.raw)
+  xv1 <- scale01(as.numeric(lv1), min.raw, max.raw)  
+  axis(1, at = round(xv1,3), labels = round(lv2,3), cex.axis=0.8)
+  #axis(1, at = xv/2, labels = lv, cex.axis=0.8)
+  mtext(colbarlab,at=0.5)
+  return(plotobj)
+}
+
+
+#' Plot the residuals reflecting the relative evolutionary rates (RERs) of a gene across species present in the gene tree
+#'  
+#' @param rermat. A residual matrix, output of the getAllResiduals() function
+#' @param index. A character denoting the name of gene, or a numeric value corresponding to the gene's row index in the residuals matrix
+#' @param phenv. A phenotype vector returned by \code{\link{tree2Paths}} or \code{\link{foreground2Paths}}
+#' @return A plot of the RERs with foreground species labelled in red, and the rest in blue
+
+plotRers <- function(rermat=NULL, index= NULL, phenv = NULL, rers= NULL, method = 's', plot = 1, xextend = 0.2, sortrers = F){
+     if(is.null(rers)){
+      e1 = rermat[index,][!is.na(rermat[index,])]     
+      colids = !is.na(rermat[index,])
+      e1plot <- e1
+      #print(e1plot)
+      if(exists('speciesNames')){
+          names(e1plot) <- speciesNames[names(e1),]
+      }
+      if(is.numeric(index)){
+         gen = rownames(rermat)[index]  
+      }else{
+         gen = index
+      }
+     }else{
+      e1plot = rers
+      gen = 'rates'
+     }
+     names(e1plot)[is.na(names(e1plot))]=""     
+     if(!is.null(phenv)){
+      phenvid = phenv[colids]               
+      fgdcor = getAllCor(rermat[index,,drop=F],phenv, method = method)     
+      plottitle = paste0(gen, ': rho = ',round(fgdcor$Rho,4),', p = ',round(fgdcor$P,4))
+      fgd = setdiff(names(e1plot)[phenvid == 1],"")            
+      df <- data.frame(species = names(e1plot), rer = e1plot, stringsAsFactors=FALSE) %>%
+          mutate(mole = as.factor(ifelse(phenvid > 0,2,1)))
+     }else{
+      plottitle = gen
+      fgd = NULL      
+      df <- data.frame(species = names(e1plot), rer = e1plot, stringsAsFactors=FALSE) %>%
+          mutate(mole = as.factor(ifelse(0,2,1)))
+     }          
+     #print(plottitle)     
+     if(sortrers){
+      df = filter(df, species!="") %>%
+          arrange(desc(rer))
+     }
+     #print(df)
+     #df <- data.frame(species = names(e1plot), rer = e1plot, stringsAsFactors=FALSE) %>%
+     #     mutate(mole = as.factor(ifelse(names(e1plot) %in% fgd,2,1)))     
+     ll=c(min(df$rer)*1.1, max(df$rer)+xextend)     
+     g  <- ggplot(df, aes(x = rer, y=factor(species, levels = ifelse(rep(sortrers, nrow(df)), species[order(rer)], sort(unique(species))) ), col=mole, label=species)) + scale_size_manual(values=c(3,3))+ geom_point(aes(size=mole))+
+          scale_color_manual(values = c("deepskyblue3", "brown1"))+
+          scale_x_continuous(limits=ll)+
+          #scale_x_continuous(expand = c(.1,.1))+
+          geom_text(hjust=1, size=5)+
+          ylab("Branches")+
+          xlab("relative rate")+
+          ggtitle(plottitle)+
+          geom_vline(xintercept=0, linetype="dotted")+
+          theme(axis.ticks.y=element_blank(),axis.text.y=element_blank(),legend.position="none",
+                panel.background = element_blank(),
+                axis.text=element_text(size=18,face='bold',colour = 'black'),
+                axis.title=element_text(size=24,face="bold"),
+                plot.title= element_text(size = 24, face = "bold"))+
+          theme(axis.line = element_line(colour = 'black',size = 1))+
+                theme(axis.line.y = element_blank())
+     if(plot){
+      print(g)
+     }
+     else{
+      g
+     }     
+}
+
+
+nvmaster <- function(treesObj, useSpecies = NULL, fgd = NULL, plot = 0){
+     #treesObj = simtrees
+     #useSpecies = NULL
+     #fgd = paste0('species',fgdbranchnums1)
+     #fgd = matrix(paste0('species',fgdcomb),4)
+     control = NULL
+     if (is.null(useSpecies)){
+          useSpecies=treesObj$masterTree$tip.label
+     }
+     both=intersect(treesObj$master$tip.label, useSpecies)
+     allreport=treesObj$report[,both]
+     ss=rowSums(allreport)
+     iiboth=which(ss==length(both))
+     ee=edgeIndexRelativeMaster(treesObj$masterTree, treesObj$masterTree)
+     ii= treesObj$matIndex[ee[, c(2,1)]]
+     allbranch=treesObj$paths[iiboth,ii]
+     nv=t(projection(t(allbranch), method="AVE", returnNV = T))
+     nv=as.vector(nv)
+     mastertree=treesObj$master
+     mastertree$edge.length=nv 
+     nn=character(length(nv))
+     iim=match(1:length(treesObj$masterTree$tip.label), treesObj$masterTree$edge[,2])    
+     nn[iim]=treesObj$masterTree$tip.label
+     names(mastertree$edge.length) = nn
+     nvplot2 = sort(mastertree$edge.length)
+     nvplot=nvplot2[names(nvplot2)!=""]
+     if(plot){
+          barcols = rep('black',length(nv))
+          avlcols <- c('red','green','blue','yellow','orange','purple')
+          nfgd = ifelse(!is.null(dim(fgd)),dim(fgd)[1],1)
+          if(nfgd > 1){
+               for(ii in 1:nfgd){
+                    barcols[names(nvplot) %in% fgd[ii,]] = avlcols[ii]
+               }
+          }else{
+               barcols[names(nvplot) %in% fgd] = avlcols[1]
+          }
+          bpl <- barplot(nvplot, horiz = T, col = barcols, names.arg = F, cex.axis = 1,
+                         cex.lab = 2, xlab = 'average rate', space = 2, width = 0.5,
+                         xlim = c(0,1.07*max(nvplot)))
+          text( nvplot+rep(0.00,length(nvplot)) , bpl, labels = names(nvplot), srt = 0, pos = 4, cex = 0.75)
+     }
+     return(mastertree)
+}
+
+
+#' @keywords  internal
+projection <- function(protein, rna=rvector, method=c("RNA","AVE","PCA"), returnNV=F)
+{
+
+
+  ###projection(ribosomal RNA)###
+  if (match.arg(method) == "RNA") {
+    rvector <- rna[,1]
+    rvector.sc <- rvector/sqrt(sum(rvector^2))
+    normv=rvector.sc
+    result <- as.matrix(protein) - rvector.sc %*% t(rvector.sc) %*% as.matrix(protein)
+  }
+
+  ###projection(average vector)###
+  if (match.arg(method) == "AVE") {
+    n <- ncol(protein)
+    m <- nrow(protein)
+    protein.sc <- matrix(0,m,n)
+    for (i in 1:n) {
+      unit <- protein[,i] / sqrt(sum(protein[,i]^2,na.rm=TRUE))
+      protein.sc[,i] <- unit
+    }
+    mean.clean = function(x){mm=mean(x,na.rm=TRUE); mm }
+    #  average <- apply(protein.sc, 1, mean.clean)
+    average=rowMeans(protein.sc, na.rm=T)
+    avector.sc <- average/sqrt(sum(average^2))
+    #    result <- average/sqrt(sum(average^2))
+    normv=avector.sc
+    Id=diag(nrow(protein))
+    #result=(Id-avector.sc %*% t(avector.sc))%*%protein
+    result <- as.matrix(protein) - avector.sc %*% t(avector.sc) %*% as.matrix(protein)
+  }
+
+  ###projection(PCA)###
+  if (match.arg(method) == "PCA") {
+    pvector <- as.vector(prcomp(protein)$x[,1])
+    print(pvector)
+    pvector.sc <- pvector/sqrt(sum(pvector^2))
+    normv=pvector.sc
+    result <- as.matrix(protein) - pvector.sc %*% t(pvector.sc) %*% as.matrix(protein)
+  }
+  if(returnNV){
+    normv
+  }
+  else{
+    result
+  }
+}
+#' @keywords internal
+resid=function(dat, lab){
+  if(is.null(dim(dat))){
+    dat=rbind(dat)
+  }
+  if (is.null(dim(lab))){
+    mod=model.matrix(~1+lab);
+  }
+  else{
+    mod=lab
+  }
+  n=dim(dat)[2]
+  Id=diag(n)
+  resid=dat %*% (Id - mod %*% solve(t(mod) %*% mod) %*%
+                   t(mod))
+}
+#' @keywords  internal
+ naresid=function(data, X,  weights=NULL, covar=NULL, numiter=0, useZero=F){
+if(is.vector(X)){
+  mod=model.matrix(~1+as.vector(X));
+}
+else{
+  mod=X
+}
+#show(mod)
+resid=matrix(nrow=nrow(data), ncol=ncol(data))
+if(useZero){
+  resid[]=0;
+}
+else{
+  resid[]=NA;
+}
+for ( i in 1:nrow(data)){
+
+  ii=which(!is.na(data[i,]))
+  if(length(ii)>2){
+    iiinv=which(is.na(data[i,]))
+
+    dat=data[i,ii,drop=F]
+
+    modtmp=mod[ii,]
+    if(!is.null(weights)){
+      W=diag(weights[i,ii])
+    }
+    else{
+      W=NULL
+    }
+    if (!is.null(covar)){
+      if(!is.null(W)){
+        W=W%*%covar
+      }
+      else{
+        W=covar
+      }
+    }
+    n=dim(dat)[2]
+    Id=diag(n)
+    if(!is.null(W)){
+
+      coeff=dat%*%W%*%modtmp %*% solve(t(modtmp) %*% W %*% modtmp)
+      #check there is no error with lm
+      # lmres=lm(t(dat)~0+modtmp, weights = diag(W))
+      #  show(coeff)
+      #  show(coefficients(lmres))
+      resid[i, ii] = dat -(coeff %*% t(modtmp))
+      resid[i, ii]=resid[i,ii]*sqrt(diag(W))
+      if(numiter>0){
+        for(iter in 1:numiter){
+          ii.use=isNotOutlier(resid[i,], quant)
+          Wq=diag(weights[i, ii.use])
+          modq=mod[ii.use,]
+          coeff=dat[i, ii.use]%*%Wq%*%modq %*% solve(t(modq) %*% Wq %*% modq)
+
+          resid[i, ] = dat[i,] -(coeff %*% t(mod))
+          resid[i, ]=resid[i,]*sqrt(diag(W))
+        }
+      }
+
+    }
+    else{
+      coeff=dat%*%modtmp %*% solve(t(modtmp)  %*% modtmp)
+      #check there is no error with lm
+      # lmres=lm(t(dat)~0+modtmp)
+      #  show(coeff)
+      #  show(coefficients(lmres))
+      resid[i, ii] = dat -(coeff %*% t(modtmp))
+
+    }
+
+
+
+  }
+  else{
+    # message("Cannot compute residuals")
+
+  }
+
+}
+rownames(resid)=rownames(data)
+colnames(resid)=colnames(data)
+resid
+}
+
+
+
+
+
+#' @keywords  internal
+projectRLM=function(data, nv){
+  resid=matrix(nrow=nrow(data), ncol=ncol(data))
+  rownames(resid)=rownames(data)
+  colnames(resid)=colnames(data)
+  for ( i in 1:nrow(data)){
+    print(i)
+    ii=which(!is.na(data[i,]))
+    iir=which(is.na(data[i,]))
+    y=data[i,ii]
+    nvtmp=as.vector(nv[ii])
+    lmres=rlm(y~1+nvtmp, psi=psi.huber)
+    resid[i,ii]=lmres$residuals
+    resid[i, iir]=0
+  }
+  resid
+}
+# Generated by using Rcpp::compileAttributes() -> do not edit by hand
+# Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
+
+timesTwo <- function(x) {
+    .Call(`_RERconverge_timesTwo`, x)
+}
+
+missingSampler <- function() {
+    .Call(`_RERconverge_missingSampler`)
+}
+
+isNA <- function(x) {
+    .Call(`_RERconverge_isNA`, x)
+}
+
+isNotNArowvec <- function(x) {
+    .Call(`_RERconverge_isNotNArowvec`, x)
+}
+
+fastLmResid <- function(Y, X) {
+    .Call(`_RERconverge_fastLmResid`, Y, X)
+}
+
+fastLmPredicted <- function(Y, X) {
+    .Call(`_RERconverge_fastLmPredicted`, Y, X)
+}
+
+fastLmResidWeighted <- function(Y, X, wa) {
+    .Call(`_RERconverge_fastLmResidWeighted`, Y, X, wa)
+}
+
+fastLm <- function(Y, X) {
+    .Call(`_RERconverge_fastLm`, Y, X)
+}
+
+fastLmResidMat <- function(Y, X) {
+    .Call(`_RERconverge_fastLmResidMat`, Y, X)
+}
+
+fastLmPredictedMat <- function(Y, X) {
+    .Call(`_RERconverge_fastLmPredictedMat`, Y, X)
+}
+
+fastLmResidMatWeighted <- function(Y, X, W) {
+    .Call(`_RERconverge_fastLmResidMatWeighted`, Y, X, W)
+}
+
+fastLmResidMatWeightedNoNACheck <- function(Y, X, W) {
+    .Call(`_RERconverge_fastLmResidMatWeightedNoNACheck`, Y, X, W)
+}
+
+
+
+
+require(ape)
+require(phytools)
+require(compiler)
+require(plotrix)
+require(Rcpp)
+require(RcppArmadillo)
+
+#' reads trees from a 2 column , tab seperated, file
+#' The first columns is the gene name and the second column is the corresponding tree in parenthetic format known as the Newick or New Hampshire format
+
+#' @param file The path to the tree file
+#' @param  max.read this function takes a while for  a whole genome so max.read is useful for testing
+#' @return A trees object of class "treeObj"
+#' @export
+readTrees=function(file, max.read=NA){
+  tmp=scan(file, sep="\t", what="character")
+  trees=vector(mode = "list", length = min(length(tmp)/2,max.read, na.rm = T))
+  treenames=character()
+  maxsp=0; # maximum number of species
+
+  for ( i in 1:min(length(tmp),max.read*2, na.rm = T)){
+    if (i %% 2==1){
+      treenames=c(treenames, tmp[i])
+    }
+    else{
+      trees[[i/2]]=unroot(read.tree(text=tmp[i]))
+      #check if it has more species
+      if(length(trees[[i/2]]$tip.label)>maxsp){
+        maxsp=length(trees[[i/2]]$tip.label)
+        allnames=trees[[i/2]]$tip.label
+      }
+    }
+
+  }
+  names(trees)=treenames
+  treesObj=vector(mode = "list")
+  treesObj$trees=trees
+  treesObj$numTrees=length(trees)
+  treesObj$maxSp=maxsp
+
+  message(paste("max is ", maxsp))
+
+  report=matrix(nrow=treesObj$numTrees, ncol=maxsp)
+  colnames(report)=allnames
+
+  rownames(report)=treenames
+  for ( i in 1:nrow(report)){
+    ii=match(allnames, trees[[i]]$tip.label)
+    report[i,]=1-is.na(ii)
+
+  }
+  treesObj$report=report
+
+
+
+  ii=which(rowSums(report)==maxsp)
+
+  #Create a master tree with no edge lengths
+  master=trees[[ii[1]]]
+  master$edge.length[]=1
+  treesObj$masterTree=master
+
+
+
+
+  treesObj$masterTree=rotateConstr(treesObj$masterTree, sort(treesObj$masterTree$tip.label))
+  #this gets the abolute alphabetically constrained order when all branches
+  #are present
+  tiporder=treeTraverse(treesObj$masterTree)
+
+  #treesObj$masterTree=CanonicalForm(treesObj$masterTree)
+
+  for ( i in 1:treesObj$numTrees){
+
+    treesObj$trees[[i]]=rotateConstr(treesObj$trees[[i]], tiporder)
+
+  }
+
+
+
+  ap=allPaths(master)
+  treesObj$ap=ap
+  matAnc=(ap$matIndex>0)+1-1
+  matAnc[is.na(matAnc)]=0
+
+  paths=matrix(nrow=treesObj$numTrees, ncol=length(ap$dist))
+  for( i in 1:treesObj$numTrees){
+    paths[i,]=allPathMasterRelative(treesObj$trees[[i]], master, ap)
+  }
+  paths=paths+min(paths[paths>0], na.rm=T)
+  treesObj$paths=paths
+  treesObj$matAnc=matAnc
+  treesObj$matIndex=ap$matIndex
+  treesObj$lengths=unlist(lapply(treesObj$trees, function(x){sqrt(sum(x$edge.length^2))}))
+
+  ii=which(rowSums(report)==maxsp)
+  if(length(ii)>20){
+    message (paste0("estimating master tree branch lengths from ", length(ii), " genes"))
+    tmp=lapply( treesObj$trees[ii], function(x){x$edge.length})
+
+    allEdge=matrix(unlist(tmp), ncol=2*maxsp-3, byrow = T)
+    allEdge=scaleMat(allEdge)
+    allEdgeM=apply(allEdge,2,mean)
+    treesObj$masterTree$edge.length=allEdgeM
+  }
+  else{
+    message("Not enough genes with all species present: master tree has no edge.lengths")
+  }
+  colnames(treesObj$paths)=namePathsWSpecies(treesObj$masterTree)
+  class(treesObj)=append(class(treesObj), "treesObj")
+  treesObj
+}
+
+computeWeightsAllVar=function (mat, nv=NULL, transform="none",plot = T, predicted=T){
+
+  if(is.null(nv)){
+    nv=apply(mat, 2, mean,na.rm=T, trim=0.05)
+
+  }
+  transform=match.arg(transform, choices = c("none", "sqrt", "log"))
+  if(transform=="log"){
+    offset=0;
+    if(min(mat, na.rm=T)<1e-8){
+      offset=min(mat[mat>1e-8])
+    }
+    mat=log(mat+offset)
+    nv=log(nv+offset)
+  }
+  if (transform=="sqrt"){
+    mat=sqrt(mat)
+    nv=sqrt(nv)
+  }
+
+  matsub=mat
+
+
+  matr=naresidCPP(matsub, model.matrix(~1+nv))
+  matpred=fastLmPredictedMat(matsub, model.matrix(~1+nv))
+
+
+
+  mml=as.vector(matsub)
+  varl=as.vector(log(matr^2))
+  ii=which(!is.na(mml))
+  mml=mml[ii]
+  varl=varl[ii]
+  set.seed(123)
+  iis=sample(length(mml), min(500000, length(mml)))
+  mml=mml[iis]
+  varl=varl[iis]
+
+  l = lowess(mml,varl, f=0.7, iter = 2)
+
+  f = approxfun(l, rule = 2)
+  if (plot) {
+    par(mfrow=c(1,2), omi=c(1,0,0,0))
+    nbreaks=20
+    qq=quantile(mml,seq(0,nbreaks,1)/nbreaks)
+    qqdiff=diff(qq)
+    breaks=qq[1:nbreaks]+qqdiff/2
+    rr=quantile(mml, c(0.0001, 0.99))
+breaks=round(breaks,3)
+    cutres<-cut(mml,breaks = breaks)
+
+    cutres_tt=table(cutres)
+
+    boxplot((varl)~ cutres, xlab = "", ylab = "log var", outline=F,  log="", las=2)
+    title("Before")
+
+
+    xx=(qq[1:nbreaks]+breaks)/2
+
+    lines(1:length(xx), (f(qq[1:nbreaks])), lwd = 2, col = 2)
+  }
+  wr=1/exp(f(mml))
+
+  if(!predicted){
+    weights=(matrix(1/exp(f(mat)), nrow = nrow(mat)))
+  }
+  else{
+    weights=(matrix(1/exp(f(matpred)), nrow = nrow(mat)))
+  }
+ if(plot){
+  matr=naresidCPP(matsub, model.matrix(~1+nv), weights)
+  varl=(as.vector(log(matr^2))[ii])[iis]
+  boxplot((varl)~ cutres, ylab = "log var", outline=F,  log="", main="After", las=2)
+  abline(h=0, col="blue3", lwd=2)
+  mtext(side = 1, text="bins", outer = T, line = 2)
+}
+  weights
+}
+
+#' @keywords  internal
+naresidCPP=function(data, mod, weights=NULL){
+  if(is.null(weights)){
+    out=fastLmResidMat(data, mod)
+  }
+  else{
+    out=fastLmResidMatWeighted(data,mod, weights)
+  }
+  rownames(out)=rownames(data)
+  colnames(out)=colnames(data)
+  out
+}
+
+#' @keywords  internal
+namePathsWSpecies=function(masterTree){
+  mat=transformMat(masterTree)
+  n=length(masterTree$tip.label)
+  #these are the tip edges in the master tree
+  iim=match(1:n, masterTree$edge[,2])
+  #each column in the mat is composed of at most one tip edge
+  tip.edge=apply(mat[iim,],2,function(x){if(max(x)>0){which(x==1)} else{NA}})
+  return(masterTree$tip[tip.edge])
+
+}
+#' @keywords  internal
+scaleMat=function(mat){t(apply(mat,1,scaleDist))}
+
+#' @keywords internal
+scaleMat_c=cmpfun(scaleMat)
+
+#' @keywords  internal
+scaleDist=function(x){
+  x/sqrt(sum(x^2))
+}
+
+#' @keywords  internal
+scaleDist_c=compiler::cmpfun(scaleDist)
+
+#' @keywords  internal
+allPathMasterRelative=function(tree, masterTree, masterTreePaths=NULL){
+  if(! is.list(masterTreePaths)){
+    masterTreePaths=allPaths(masterTree)
+  }
+
+  treePaths=allPaths(tree)
+  map=matchAllNodes_c(tree,masterTree)
+
+  #remap the nodes
+  treePaths$nodeId[,1]=map[treePaths$nodeId[,1],2 ]
+  treePaths$nodeId[,2]=map[treePaths$nodeId[,2],2 ]
+
+
+  ii=masterTreePaths$matIndex[(treePaths$nodeId[,2]-1)*nrow(masterTreePaths$matIndex)+treePaths$nodeId[,1]]
+
+  vals=double(length(masterTreePaths$dist))
+  vals[]=NA
+  vals[ii]=treePaths$dist
+  vals
+}
+
+
+
+
+
+#' @keywords  internal
+matchAllNodes=function(tree1, tree2){
+  map=matchNodesInject_c(tree1,tree2)
+  map=map[order(map[,1]),]
+  map
+}
+#' @keywords  internal
+matchAllNodes_c=cmpfun(matchAllNodes)
+
+#' @keywords  internal
+matchNodesInject=function (tr1, tr2){
+
+  desc.tr1 <- lapply(1:tr1$Nnode + length(tr1$tip), function(x) extract.clade(tr1,
+                                                                              x)$tip.label)
+  names(desc.tr1) <- 1:tr1$Nnode + length(tr1$tip)
+  desc.tr2 <- lapply(1:tr2$Nnode + length(tr2$tip), function(x) extract.clade(tr2,
+                                                                              x)$tip.label)
+  names(desc.tr2) <- 1:tr2$Nnode + length(tr2$tip)
+  Nodes <- matrix(NA, length(desc.tr1), 2, dimnames = list(NULL,
+                                                           c("tr1", "tr2")))
+  for (i in 1:length(desc.tr1)) {
+    Nodes[i, 1] <- as.numeric(names(desc.tr1)[i])
+    for (j in 1:length(desc.tr2)) if (all(desc.tr1[[i]] %in%
+                                          desc.tr2[[j]]))
+      Nodes[i, 2] <- as.numeric(names(desc.tr2)[j])
+  }
+
+  iim=match(tr1$tip.label, tr2$tip.label)
+  Nodes=rbind(cbind(1:length(tr1$tip.label),iim),Nodes)
+  Nodes
+}
+
+#' @keywords  internal
+matchNodesInject_c=cmpfun(matchNodesInject)
+
+#' @keywords  internal
+allPaths=function(tree){
+  dd=dist.nodes(tree)
+  allD=double()
+  nn=matrix(nrow=0, ncol=2)
+  nA=length(tree$tip.label)+tree$Nnode
+  matIndex=matrix(nrow=nA, ncol=nA)
+  index=1
+  for ( i in 1:nA){
+    ia=getAncestors(tree,i)
+    if(length(ia)>0){
+      allD=c(allD, dd[i, ia])
+      nn=rbind(nn,cbind(rep(i, length(ia)), ia))
+      for (j in ia){
+        matIndex[i,j]=index
+        index=index+1
+      }
+    }
+  }
+  return(list(dist=allD, nodeId=nn, matIndex=matIndex))
+}
+#' @keywords  internal
+getAncestors=function(tree, nodeN){
+  if(is.character(nodeN)){
+    nodeN=which(tree$tip.label==nodeN)
+  }
+  im=which(tree$edge[,2]==nodeN)
+  if(length(im)==0){
+    return()
+  }
+  else{
+    anc=tree$edge[im,1]
+    return(c(anc, getAncestors(tree, anc)))
+  }
+
+}
+
+
+
+
+#' @keywords  internal
+treeTraverse=function(tree, node=NULL){
+  if(is.null(node)){
+    rt=getRoot(tree)
+    ic=getChildren(tree,rt)
+    return(c(treeTraverse(tree, ic[1]), treeTraverse(tree, ic[2])))
+
+  }
+  else{
+    if (node<=length(tree$tip)){
+      return(tree$tip[node])
+    }
+    else{
+      ic=getChildren(tree,node)
+      return(c(treeTraverse(tree, ic[1]), treeTraverse(tree, ic[2])))
+
+    }
+  }
+}
+#' @keywords  internal
+getRoot = function(phy) phy$edge[, 1][!match(phy$edge[, 1], phy$edge[, 2], 0)][1]
+#' @keywords  internal
+getChildren=function(tree, nodeN){
+  tree$edge[tree$edge[,1]==nodeN,2]
+}
+
+
+
+
+
+
+#'Computes the association statistics between RER from \code{\link{getAllResiduals}} and a phenotype paths vector made with \code{\link{tree2Paths}} or \code{\link{char2Paths}}
+#' @param RERmat RER matrix returned by \code{\link{getAllResiduals}}
+#' @param charP phenotype vector returned by \code{\link{tree2Paths}} or \code{\link{char2Paths}}
+#' @param method Method used to compute correlations. Accepts the same arguments as \code{\link{cor}}. Set to "auto" to select automatically based on the number of unique values in charP. This will also auto set the winsorization for Pearson correlation. Set winsorize=some number to override
+#' @param min.sp Minimum number of species that must be present for a gene
+#' @param min.pos Minimum number of species that must be present in the foreground (non-zero phenotype values)
+#' @param winsorize Winsorize values before computing Pearson correlation. Winsorize=3, will set the 3 most extreme values at each end to the the value closest to 0.
+#' @param weights perform weighted correlation, experimental. You can use the weights computed by \code{treesObj<-\link{readTrees}} by setting \code{weights=treeObj$weights}
+#' @note  winsorize is in terms of number of observations at each end, NOT quantiles
+#' @return A list object with correlation values, p-values, and the number of data points used for each tree
+#' @export
+getAllCor=function(RERmat, charP, method="auto",min.sp=10, min.pos=2, winsorize=NULL,weights=NULL){
+  if (method=="auto"){
+    lu=length(unique(charP))
+    if(lu==2){
+      method="k"
+      message("Setting method to Kendall")
+    }
+    else if (lu<=5){
+      method="s"
+      message("Setting method to Spearman")
+    }
+    else{
+      method="p"
+      message("Setting method to Pearson")
+      if(is.null(winsorize)){
+        message("Setting winsorise=3")
+      }
+    }
+  }
+  win=function(x,w){
+    xs=sort(x[!is.na(x)], decreasing = T)
+    xmax=xs[w]
+    xmin=xs[length(xs)-w+1]
+
+    x[x>xmax]=xmax
+    x[x<xmin]=xmin
+    x
+  }
+  corout=matrix(nrow=nrow(RERmat), ncol=3)
+  rownames(corout)=rownames(RERmat)
+
+  colnames(corout)=c("Rho", "N", "P")
+  if(!is.null(winsorize)){
+    charP=win(charP, winsorize)
+  }
+
+  for( i in 1:nrow(corout)){
+
+    if(((nb<-sum(ii<-(!is.na(charP)&!is.na(RERmat[i,]))))>=min.sp)){
+      if (method!="p"&&sum(charP[ii]!=0)<min.pos){
+        next
+      }
+
+      if(is.null(weights)){
+
+
+        if (!is.null(winsorize)){
+          x=win(RERmat[i,], winsorize)
+        }
+        else{
+          x=RERmat[i,]
+        }
+        cres=cor.test(x, charP, method=method)
+        corout[i,1:3]=c(cres$estimate, nb, cres$p.value)
+      }
+      else{
+
+        cres=wtd.cor(rank(RERmat[i,ii]), rank(charP[ii]), weight = weights[rownames(RERmat)[i],ii], mean1 = F)
+
+        corout[i, 1:3]=c(cres[1], nb, cres[4])
+      }
+    }
+    else{
+      #show(i)
+      #show(c(nb, charP[ii]))
+    }
+
+  }
+  as.data.frame(corout)
+}
+
+#' main RER computation function
+#' @param treesObj A treesObj created by \code{\link{readTrees}}
+#' @param a cutoff value for branch lengths bellow which the branch lengths will be discarded, very data dependent but should roughly correspond to 0 or 1 sequence change on that branch. If left NULL this whill be set to the bottom 0.05 quantile. Set to 0 for no cutoff.
+#' @param transform The transformation to apply to the trees branch values before computing relative rates. Available options are sqrt and log, sqrt is recommended.
+#' @param weighted Use weighted regression to compute relative rates, meant to correct for the non-constant mean-variance relationship in evolutionary rate data.
+#' @param useSpecies Give only a subset of the species to use for RER calculation. Some times excluding unusually long branches can provide more stable results
+#' @param min.sp The minimum number of species needed to compute RER
+#' @param scale Scale relative rates internally for each species subset. Increases computation time with little apparent benefit. Better to scale the final matrix.
+#' @param doOnly The index of a specific tree in the treesObj to calculate RER for. Useful if a single result is needed quickly.
+#' @param maxT The maximum number of trees to compute results for. Since this function takes some time this is useful for debugging.
+#' @return A numer of trees by number of paths matrix of relative evolutionary rates. Only an independent set of paths has non-NA values for each tree.
+#' @export
+getAllResiduals=function(treesObj, cutoff=NULL, transform="none", weighted=F,  useSpecies=NULL,  min.sp=10, scale=F,  doOnly=NULL, maxT=NULL, scaleForPproj=F, mean.trim=0.05){
+
+  if(is.null(cutoff)){
+    cutoff=quantile(treesObj$paths, 0.05, na.rm=T)
+    message(paste("cutoff is set to", cutoff))
+  }
+ if (weighted){
+   weights=computeWeightsAllVar(treesObj$paths, transform=transform, plot=T)
+   residfunc=fastLmResidMatWeighted
+ }
+  else{
+    residfunc=fastLmResidMat
+  }
+  # residfunc=naresid
+
+  if (is.null(useSpecies)){
+    useSpecies=treesObj$masterTree$tip.label
+    mappedEdges=trees$mappedEdges
+  }
+  if(is.null(maxT)){
+    maxT=treesObj$numTrees
+  }
+  if(transform!="none"){
+    transform=match.arg(transform,c("sqrt", "log"))
+    transform=get(transform)
+  }
+  else{
+    transform=NULL
+  }
+
+
+
+  #cm is the common names of species that are included in the char vector and ucsctree
+  cm=intersect(treesObj$masterTree$tip.label, useSpecies)
+  #master.tree=pruneTree(ucsctreeUse, cm)
+
+  rr=matrix(nrow=nrow(treesObj$paths), ncol=ncol(treesObj$paths))
+
+  #maximum number of present species
+  maxn=rowSums(treesObj$report[,cm])
+
+  if(is.null(doOnly)){
+    doOnly=1
+  }
+  else{
+    maxT=1
+  }
+  skipped=double(nrow(rr))
+  skipped[]=0
+
+  for (i in doOnly:(doOnly+maxT-1)){
+
+    if(sum(!is.na(rr[i,]))==0&&!skipped[i]==1){
+
+
+      #get the ith tree
+      tree1=treesObj$trees[[i]]
+
+      #get the common species, prune and unroot
+      both=intersect(tree1$tip.label, cm)
+      if(length(both)<min.sp){
+        next
+      }
+      tree1=unroot(pruneTree(tree1,both))
+
+      #do the same for the refTree
+
+
+      #find all the genes that contain all of the species in tree1
+      allreport=treesObj$report[,both]
+      ss=rowSums(allreport)
+      iiboth=which(ss==length(both))
+
+      nb=length(both)
+      ai=which(maxn[iiboth]==nb)
+
+
+      message(paste("i=", i))
+
+
+      if(T){
+
+
+          ee=edgeIndexRelativeMaster(tree1, treesObj$masterTree)
+
+        ii= treesObj$matIndex[ee[, c(2,1)]]
+
+        allbranch=treesObj$paths[iiboth,ii]
+        if(weighted){
+        allbranchw=weights[iiboth,ii]
+        }
+        if(scaleForPproj){
+          nv=apply(scaleMatMean_c(allbranch), 2, mean, na.rm=T, trim=mean.trim)
+        }
+        else{
+          nv=apply(allbranch, 2, mean, na.rm=T, trim=mean.trim)
+        }
+
+        iibad=which(allbranch<cutoff)
+        #don't scale
+        #allbranch=scaleMat_c(allbranch)
+        if(!is.null(transform)){
+          nv=transform(nv)
+          allbranch=transform(allbranch)
+        }
+        allbranch[iibad]=NA
+
+
+
+
+        if(!scale){
+          if(!weighted){
+            proj=residfunc(allbranch[ai, ,drop=F], model.matrix(~1+nv))
+
+          }
+          else{
+
+            proj=residfunc(allbranch[ai, ,drop=F], model.matrix(~1+nv), allbranchw[ai, ,drop=F])
+
+          }
+        }
+
+        else{
+
+          if(!weighted){
+            proj=residfunc(allbranch[, ,drop=F], model.matrix(~1+nv))
+          }
+          else{
+
+            proj=residfunc(allbranch[, ,drop=F], model.matrix(~1+nv),allbranchw)
+          }
+
+          proj=scale(proj, center = F)[ai, , drop=F]
+
+        }
+
+
+        #we have the projection
+
+
+
+        rr[iiboth[ai],ii]=proj
+
+      }
+
+    }}
+  rownames(rr)=names(treesObj$trees)
+  colnames(rr)=namePathsWSpecies(treesObj$masterTree)
+  rr
+}
+
+
+
+#' turns a named vector of characters into a paths vector to be used with \code{\link{getAllCor}}
+#' @param tip.vals the trait/phenotype/character value at the tip, \code{names(tip.vals)} should match some of the \code{mastertree$tip.label}, though a perfect match is not required
+#' @param  treesObj A treesObj created by \code{\link{readTrees}}
+#' @inheritParams  edgeVars
+#' @return A vector of length equal to the number of paths in treesObj
+#' @export
+char2Paths=  function (tip.vals, treesObj, altMasterTree = NULL, metric = "diff",
+                       se.filter = -1, ...)
+{
+  if (!is.null(altMasterTree)) {
+    masterTree = altMasterTree
+  }
+  else if (!all(treesObj$masterTree$edge.length == 1)) {
+    masterTree = treesObj$masterTree
+  }
+  else {
+    message("The treesObj master tree has no edge lengths, please provide an alternative master tree")
+    return()
+  }
+  cm=intersect(treesObj$masterTree$tip,intersect(names(tip.vals), masterTree$tip))
+
+#reduce to the same species set
+    master.tree = pruneTree(masterTree, cm)
+    tip.vals=tip.vals[cm]
+#make the tree with ancestral states
+  charTree = edgeVars(master.tree, tip.vals, metric=metric, se.filter=se.filter, ...)
+
+
+  sp.miss = setdiff(treesObj$masterTree$tip, names(tip.vals))
+  if (length(sp.miss) > 0) {
+    message(paste0("Species not present: ", paste(sp.miss,
+                                                  collapse = ",")))
+
+  }
+
+  ap = allPaths(treesObj$masterTree)
+  allPathMasterRelative(charTree, treesObj$masterTree, ap)
+}
+
+
+
+
+
+#' Obtain a trees object where the foreground species have branch lengths of 1, and the rest 0
+#'
+
+#' @param foreground. A character vector containing the foreground species
+#' @param  treesObj A treesObj created by \code{\link{readTrees}}
+#' @param plotTree Plot a tree representation of the result
+#' @return A vector of length equal to the number of paths in treesObj
+#' @export
+foreground2Paths = function(foreground,treesObj, plotTree=F){
+  res = treesObj$masterTree
+  res$edge.length <- rep(0,length(res$edge.length))
+  res$edge.length[nameEdges(treesObj$masterTree) %in% foreground] = 1
+  names(res$edge.length) = nameEdges(treesObj$masterTree)
+  if(plotTree){
+    plot(res)
+  }
+  tree2Paths(res, treesObj)
+}
+
+
+#' @param foreground. A character vector containing the foreground species
+#' @param  treesObj A treesObj created by \code{\link{readTrees}}
+#' @param collapse2anc Put all the weight on the ancestral branch when the trait appears on a while clade
+#' @param plotTree Plot a tree representation of the result
+#' @return A tree with edge.lengths representing phenotypic states
+#' @export
+foreground2Tree = function(foreground,treesObj, collapse2anc=T, plotTree=T){
+  res = treesObj$masterTree
+  res$edge.length <- rep(0.05,length(res$edge.length))
+if(!collapse2anc){
+  res$edge.length[nameEdges(treesObj$masterTree) %in% foreground] = 1
+  names(res$edge.length) = nameEdges(treesObj$masterTree)
+}
+  else{
+  tip.vals=rep(0.05, length(treesObj$masterTree$tip.label))
+  names(tip.vals)=treesObj$masterTree$tip.label
+  tip.vals[foreground]=1
+  fares=fastAnc(treesObj$masterTree, x=tip.vals, CI = T)
+  internalVals=(apply(fares$CI95>0.5,1,all))+1-1
+evals=matrix(nrow=nrow(treesObj$masterTree$edge), ncol=2)
+eres=c(tip.vals, internalVals)
+evals[,1]=eres[treesObj$masterTree$edge[,1]]
+evals[,2]=eres[treesObj$masterTree$edge[,2]]
+res$edge.length=evals[,2]-evals[,1]
+res$edge.length[res$edge.length<1]=0.05
+}
+  if(plotTree){
+    plot(res)
+  }
+res
+}
+
+
+
+
+#' @keywords internal
+nameEdges=function(tree){
+  nn=character(nrow(tree$edge))
+  iim=match(1:length(tree$tip.label), tree$edge[,2])
+  nn[iim]=tree$tip.label
+  nn
+}
+
+
+#' Generates a phenotype paths vector matching thre treesObject from a tree where branches specify phenotypes
+#' @param tree A phenotype tree, with branch length encoding a phenotype.
+#' @param  treesObj A treesObj created by \code{\link{readTrees}}
+#' @param binarize Force binary path representation. Sets all positive path values to 1. Useful if the tree has ancestral nodes with non-zero branches, otherwise values are simply added along branches.
+#' @return A vector of length equal to the number of paths in treesObj
+#' @export
+tree2Paths=function(tree, treesObj, binarize=T){
+  stopifnot(class(tree)[1]=="phylo")
+  stopifnot(class(treesObj)[2]=="treesObj")
+
+
+  treePaths=allPaths(tree)
+  map=matchAllNodes_c(tree,treesObj$masterTree)
+
+  #remap the nodes
+  treePaths$nodeId[,1]=map[treePaths$nodeId[,1],2 ]
+  treePaths$nodeId[,2]=map[treePaths$nodeId[,2],2 ]
+
+
+  ii=treesObj$ap$matIndex[(treePaths$nodeId[,2]-1)*nrow(treesObj$ap$matIndex)+treePaths$nodeId[,1]]
+
+  vals=double(length(treesObj$ap$dist))
+  vals[]=NA
+  vals[ii]=treePaths$dist
+  if(binarize){
+  mm=mean(vals)
+    vals[vals>mm]=1
+  vals[vals<=mm]=0
+    }
+  vals
+}
+
+#' Makes a binary path vector from either a tree of class "phylo" or a forground species set supplied as a character vector
+#' @param input Either a phenotype tree of class "phylo" (with branch length encoding a phenotype) or a character vector of foreground branches
+#' @param  treesObj A treesObj created by \code{\link{readTrees}}
+#' @return A vector of length equal to the number of paths in treesObj
+#' @export
+makeBinaryPaths=function(input, treesObj){
+  if(class(input)=="character"){
+    foreground2Paths(input, treesObj)
+  }
+  else if (class(input)=="phylo"){
+    tree2Paths(input, treesObj)
+  }
+  else{
+    message("Need either a phylo tree or a character vector")
+    return(NULL)
+  }
+}
+
+
+#' maps a vector of traits onto a reference tree
+#' @param mastertree the tree species the topology of the output tree and the branch lengths are used to infer ancestral states
+#' @param tip.vals the trait/phenotype/character value at the tip, \code{names(tip.vals)} should match some of the \code{mastertree$tip.label}, though a perfect match is not required
+#' @param metric The metric used to translate node values into branch values. "Diff" takes the difference and makes the result phylogenetically independent. Other possible values are "mean" (the mean of the two values) and "last" the value of the most recent species on the branch. The last two options are not phylogenetically independent and downstream computations for those are not yet implemented
+#' @param se.filter Will remove branch values that are not at least \code{se.filter*edge.se} away from 0 (where edge.se is the standard error in the estimate for the edge value). Only implemented for \code{metric="diff"}. Set \code{se.filter} to a positive value to filter. By default no filtering is done.
+#' @param return.var Returns the variance instead of the mean. Useful for seeing which estimates have high confidence.
+#' @return A phylo tree with branch values computed from the input tip.values
+#' @export
+edgeVars=function(mastertree,tip.vals, metric="diff", se.filter=-1, return.var=F){
+  message(paste0("using metric ", metric, ", with filtering constant ", se.filter))
+  metric=match.arg(metric, c("diff", "mean", "last"))
+  cm=intersect(mastertree$tip.label, names(tip.vals))
+  mastertree=pruneTree(mastertree, cm)
+
+  #sets edge length to the difference between two nodes, the evolutionary change (i.e. the change between species A and its ancestral species)
+  tip.vals=tip.vals[mastertree$tip.label]
+  res=fastAnc(mastertree, x=tip.vals, vars=T)
+  vars=c(rep(NA, length(tip.vals)), res$var)
+  res=c(tip.vals, res$ace)
+  names(res)[1:length(tip.vals)]=as.character(1:length(tip.vals))
+  evals=matrix(nrow=nrow(mastertree$edge), ncol=2)
+  evars=matrix(nrow=nrow(mastertree$edge), ncol=2)
+
+  evals[,1]=res[mastertree$edge[,1]]
+  evals[,2]=res[mastertree$edge[,2]]
+  evars[,1]=vars[mastertree$edge[,1]]
+  evars[,2]=vars[mastertree$edge[,2]]
+  newtree=mastertree
+
+  if(metric=="diff"){
+    newtree$edge.length=evals[,2]-evals[,1]
+    edge.se=sqrt(apply(evars,1,mean, na.rm=T))/sqrt(length(cm))
+    #   plot(newtree$edge.length, edge.se)
+    iibad=which(abs(newtree$edge.length)<se.filter*edge.se)
+    newtree$edge.length[iibad]=NA
+  }
+  else if (metric=="mean"){
+    newtree$edge.length=evals[,2]+evals[,1]
+  }
+  else if (metric=="last"){
+    newtree$edge.length=evals[,1]
+    evars[,2]=0
+  }
+  if(!return.var){
+    return(newtree)
+  }
+  else{
+    message("Returning variance")
+    newtree$edge.length=(edge.se*length(cm))^2
+
+    return(newtree)
+  }
+}
+
+
+#' wrapper around \code{\link[ape]{drop.tip}}
+#' @param  tree a "phylo" tree
+#' @param  tip.names The tip names to keep in the tree
+#' @return  A new pruned tree
+#' @export
+pruneTree=function(tree, tip.names){
+  keep=intersect(tree$tip.label, tip.names)
+  torm=setdiff(tree$tip.label, keep)
+  tree=drop.tip(tree, torm)
+  tree
+}
+
+
+
+#' @keywords  internal
+transformMat=function(tree){
+
+  nA=length(tree$tip.label)+tree$Nnode
+  matIndex=matrix(nrow=nA, ncol=nA)
+  mat=matrix(nrow=nrow(tree$edge), ncol=0)
+  index=1
+  for ( i in 1:nA){
+    ia=getAncestors(tree,i)
+    if(length(ia)>0){
+      thisindex=double()
+      ia=c(i,ia)
+      for (k in 2:length(ia)){
+        j=ia[k]
+
+        thisindex=c(thisindex, which(tree$edge[,2]==ia[k-1]&tree$edge[,1]==ia[k]))
+
+        vals=rep(0, nrow(mat))
+        vals[thisindex]=1
+        mat=cbind(mat, vals)
+      }
+    }
+  }
+  mat
+}
+
+
+
+
+
+
+
+edgeIndexRelativeMaster=function(tree, masterTree){
+  map=matchAllNodes(tree,masterTree)
+  newedge=tree$edge
+  newedge[,1]=map[newedge[,1],2]
+  newedge[,2]=map[newedge[,2],2]
+  newedge
+}
+
+edgeReOrder=function(tree, masterTree){
+  map=matchAllNodes(tree,masterTree)
+  #rename the tree edge
+  newedge=tree$edge
+  newedge[,1]=map[newedge[,1],2]
+  newedge[,2]=map[newedge[,2],2]
+  edgenames=namePaths(newedge)
+
+  masternames=namePaths(masterTree$edge)
+
+  match(masternames, edgenames)
+}
+
+namePaths=function(nodeMat, invert=F, mult=1000){
+  warning("Why am I doing this")
+  if(invert){
+    nodeMat=nodeMat[,c(2,1)]
+  }
+  return(nodeMat[,1]*mult+nodeMat[,2])
+}
+printTipDist=function(tree, node){
+  if(is.character(node)){
+    node=match(node, tree$tip.label)
+  }
+  ii=which(tree$edge[,2]==node)
+  print(tree$edge.length[ii])
+}
+printLeaveEdges=function(tree){
+  nA=tree$Nnode+length(tree$tip)
+  nT=length(tree$tip.label)
+  ii=match(1:nT, tree$edge[,2])
+  tmp=as.data.frame(tree$edge)
+  tmp[ii,2]=tree$tip.label[tmp[ii,2]]
+  show(tmp[ii,])
+  tmp
+}
+printClade=function(tree,node){
+  nT=length(tree$tip.label)
+  clade=character()
+  if(node<=nT){
+    clade=c(clade, tree$tip.label[node])
+  }
+  else{
+    ic=getChildren(tree,node)
+    for ( i in 1:length(ic)){
+      clade=c(clade, printClade(tree,ic[i]))
+    }
+  }
+  paste(clade, collapse=",")
+}
+
+CanonicalForm=function(tree){
+  par(mfrow=c(1,2))
+  #  plot(tree)
+  oo=order(tree$tip.label)
+  tree$tip.label=tree$tip.label[oo]
+  ii=match(1:length(oo), tree$edge[,2])
+  tree$edge[ii,2]=order(oo)
+  #plot(tree)
+  rotateConstr(tree, sort(tree$tip.label))
+
+}
+
+
+
+rescaleTree=function(tree){
+  tree$edge.length=tree$edge.length/sqrt(sum(tree$edge.length^2))
+  tree
+}
+treeSum=function(tree){
+  sum(tree$edge.length^2)
+}
+distToVec=function(dist){
+  vec=as.vector(dist)
+  names=character()
+  for(i in 1:nrow(dist)){
+    for(j in 1:ncol(dist)){
+      names=c(names, paste(rownames(dist)[i], colnames(dist)[j], sep="_"))
+    }
+  }
+  names(vec)=names
+  vec
+}
+
+
+
+
+
+
+#linear fit with intercept
+residLN=function(x,y, plot=F){
+  if(plot){
+    plot(y,x);abline(a=0,b=1)
+  }
+  return(as.vector(resid(x, cbind(rep(1,length(y)), y))))
+}
+#linear fit no intersept
+residLN0=function(x,y, plot=F){
+  if(plot){
+    plot(y,x);abline(a=0,b=1)
+  }
+  return(as.vector(resid(x, cbind(y))))
+}
+
+
+#linear fit in sqroot space
+residSQ=function(x,y, plot=F){
+  x=sqrt(x);y=sqrt(y)
+  if(plot){
+    plot(y,x);abline(a=0,b=1)
+  }
+  return(as.vector(resid(x, cbind(rep(1,length(y)), y))))
+}
+
+
+#loess fit
+residLO=function(x,y, plot=F){
+  x=as.vector(sqrt(x));y=as.vector(sqrt(y))
+
+  fit=loess(x~y, span = 0.99, family = "s")
+  if(plot){
+    plot(fit$x, fit$y)
+    lines(sort(fit$x), fit$fitted[order(fit$x)])
+  }
+  return(as.vector(fit$residuals))
+}
+
+projectionSQ=function(allbranch){
+  nv=projection(t(allbranch), method="AVE", returnNV = T)
+  proj=resid(sqrt(allbranch), cbind(rep(1,length(nv)),nv))
+  return(proj)
+}
+
+
+
+checkOrder=function(tree1, tree2, plot=F){
+  both=intersect(tree1$tip.label, tree2$tip.label)
+
+  tree1=unroot(pruneTree(tree1, both))
+  tree2=unroot(pruneTree(tree2, both))
+
+  tmpe1=as.data.frame(tree1$edge)
+  tmpe1[match(1:length(both),tmpe1[,2]),2]=tree1$tip
+  tmpe2=as.data.frame(tree2$edge)
+  tmpe2[match(1:length(both),tmpe2[,2]),2]=tree2$tip
+
+  map=matchNodes(tree1,tree2, method = "descendant")
+  n=length(both)
+  im=match(tree1$tip, tree2$tip)
+  map=rbind(map, cbind(1:n, im))
+  map=map[order(map[,1]),]
+
+  edge1remap=tree1$edge
+
+
+  edge1remap[,1]=map[edge1remap[,1],2]
+  edge1remap[,2]=map[edge1remap[,2],2]
+  if(plot){
+    tmpd1=tree1$edge.length
+    tmpd2=tree2$edge.length
+    nn=character(length(tree1$edge))
+    iim1=match(1:length(tree1$tip.label), tree1$edge[,2])
+    nn[iim1]=tree1$tip.label
+    par(mfrow=c(1,3))
+    plot(tree1, use.edge.length = T); plot(tree2, use.edge.length = T)
+    plotWtext(tmpd1, tmpd2, nn[])
+  }
+  return(all(edge1remap[,1]==tree2$edge[,1]) &&all(edge1remap[,2]==tree2$edge[,2]))
+
+  #   #show(tmpd1)
+
+  #  return(cbind(tmpd1, tmpd2))
+}
+
+
+
+
+if(F){
+  getNV=function(name1, name2, treesObj, residfun=residLN, plot=T){
+    report=treesObj[["report"]]
+    both=names(which(colSums(report[c(name1,name2),])==2))
+    show(length(both))
+    mastertree=pruneTree(treesObj[["master"]], both)
+    allbranch=matrix(nrow=0, ncol=length(mastertree$edge.length))
+    for ( i in 1:(length(treesObj)-3)){
+      if(sum(is.na(match(both, treesObj[[i]]$tip.label)))==0){
+        tmptree=(pruneTree(treesObj[[i]], both, mastertree))
+
+        # show(c(length(tmptree$edge.length), ncol(allbranch)))
+        allbranch=rbind(allbranch, tmptree$edge.length)
+      }
+    }
+    nv=projection(t(allbranch), method="AVE", returnNV = T)
+    mastertree$edge.length=nv
+    # par(mfrow=c(1,3))
+    res=correlateTrees(treesObj[[name1]], treesObj[[name2]], mastertree, residfun=residfun, plot=plot)
+    res$nv=nv
+    res$master=mastertree
+    return(res)
+  }
+
+
+  getProjection=function(treesObj, tree1, tree2, maxT=treesObj$numTrees){
+    both=intersect(tree1$tip.label, tree2$tip.label)
+    tree1=unroot(pruneTree(tree1, both))
+    tree2=unroot(pruneTree(tree2, both))
+    allreport=treesObj$report[1:maxT,both]
+
+    ss=rowSums(allreport)
+    iiboth=which(ss==length(both))
+    torm=setdiff(treesObj$masterTree$tip.label, both)
+    allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+    for ( k in 1:length(iiboth)){
+      tmptree=rescaleTree(unroot(drop.tip(treesObj$trees[[iiboth[k]]], torm)))
+      allbranch[k, ]=tmptree$edge.length
+    }
+    allbranch
+  }
+
+  getProjectionPaths=function(treesObj, tree1, tree2, maxT=treesObj$numTrees){
+    both=intersect(tree1$tip.label, tree2$tip.label)
+    tree1=unroot(pruneTree(tree1, both))
+    tree2=unroot(pruneTree(tree2, both))
+    allreport=treesObj$report[1:maxT,both]
+    ss=rowSums(allreport)
+    iiboth=which(ss==length(both))
+    allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+    ee=edgeIndexRelativeMaster(tree1, treesObj$masterTree)
+    ii= match(namePaths(ee,T), colnames(treesObj$paths))
+    allbranch=treesObj$paths[iiboth,ii]
+    allbranch=scaleMat_c(allbranch)
+    allbranch
+  }
+
+
+  correlateTreesAll=function(treesObj,  usePaths=F, useIndex=F,maxn=NULL, maxDo){
+    maxT=treesObj$numTrees
+    if (is.null(maxDo)){
+
+      maxDo=maxT*(maxT-1)
+    }
+    corout=matrix(nrow=maxT, ncol=maxT)
+    message("10")
+    if(is.null(maxn)){
+      maxn=treesObj$report%*%t(treesObj$report)
+    }
+    message("20")
+    done=0
+    # todo=length(maxn[upper.tri(maxn)]>=10)
+    todo=100
+    message("30")
+    #corout[maxn<10]=0
+    message(40)
+    diag(corout)=1
+    #corout[lower.tri(corout)]=0
+    message("Starting loop")
+    for (i in 1:(maxT-1)){
+      for(j in (i+1):maxT){
+        #  show(c(i,j))
+        if (is.na(corout[i,j]) || maxn[i,j]<11){
+          t0=as.double(Sys.time())
+          tree1=treesObj$trees[[i]]
+          tree2=treesObj$trees[[j]]
+
+          bothIndex=which(colSums(treesObj$report[c(i, j),])==2)
+          both=intersect(tree1$tip.label, tree2$tip.label)
+          if(!useIndex){
+            tree1=unroot(pruneTree(tree1, both))
+            tree2=unroot(pruneTree(tree2, both))
+          }
+          allreport=treesObj$report[,bothIndex]
+          ss=rowSums(allreport)
+          iiboth=which(ss==length(bothIndex))
+          #  torm=setdiff(treesObj$masterTree$tip.label, both)
+          # allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+
+          t1=as.double(Sys.time())
+          message(paste("10 took", t1-t0))
+          t0=t1
+          if(! usePaths){
+            torm=setdiff(treesObj$masterTree$tip.label, both)
+            allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+            for ( k in 1:length(iiboth)){
+              tmptree=rescaleTree(unroot(drop.tip(treesObj$trees[[iiboth[k]]], torm)))
+              allbranch[k, ]=tmptree$edge.length
+            }
+          }
+          else{
+            if(!useIndex){
+              message("Here")
+              ee=edgeIndexRelativeMaster(tree1, treesObj$masterTree)
+              ii= match(namePaths(ee,T), colnames(treesObj$paths))
+              allbranch=treesObj$paths[iiboth,ii]
+            }
+            else{
+              allbranch=getBranch(treesObj, bothIndex)
+            }
+            t1=as.double(Sys.time())
+            message(paste("20 took", t1-t0))
+            t0=t1
+            allbranch=scaleMat_c(allbranch)
+          }
+
+          message("done")
+          nb=length(both)
+          proj=t(projection(t(allbranch), method="AVE", returnNV = F))
+          # i1=match(i, iiboth)
+          #j1=match(j,iiboth)
+          #corout[i,j]=cor(proj[i1, ], proj[j1,])
+          #  tmpcor=cor(t(proj))
+
+          ai=which(maxn[iiboth, iiboth]==nb, arr.ind = T)
+          t1=as.double(Sys.time())
+          message(paste("30 took", t1-t0))
+          t0=t1
+          for (m in 1:nrow(ai)){
+            k=sort(ai[m,])[1]
+            l=sort(ai[m,])[2]
+
+            tmpcor=cor(proj[k,], proj[l,])
+            if (is.na(tmpcor)){
+              tmpcor=0
+            }
+            corout[iiboth[k], iiboth[l]]=tmpcor
+
+
+          }
+          t1=as.double(Sys.time())
+          message(paste("40 took", t1-t0))
+          t0=t1
+          done=done+nrow(ai)
+          message(paste("Done with",done, "out of", todo))
+          #  message(paste(sum(is.na(corout))," left"), appendLF = T)
+          if(done>=maxDo){
+            message("DOne")
+            return(corout)
+          }
+          #generate the projection
+        }
+      }
+    }
+
+  }
+
+
+
+  #assume the binTree is already in canonical form
+  correlateTreesBinary=function(treesObj,  binTree, usePaths=F, maxDo=NULL, species.list=NULL, useSQ=F){
+    maxT=treesObj$numTrees
+    if (is.null(maxDo)){
+
+      maxDo=maxT
+    }
+    corout=matrix(nrow=maxT, ncol=1)
+    pout=matrix(nrow=maxT, ncol=1)
+    rownames(corout)=rownames(pout)=names(treesObj$trees)
+    show(binTree$tip.label )
+    binReport=as.vector(as.numeric(binTree$tip.label %in% colnames(treesObj$report)))
+    show((binReport))
+    names(binReport)=colnames(treesObj$report)
+    maxn=treesObj$report[, species.list]%*%(binReport[species.list])
+
+    done=0
+    todo=length(maxn>=10)
+    corout[maxn<10]=0
+
+    for (i in 1:maxT){
+
+      if (is.na(corout[i,1])){
+        tree1=treesObj$trees[[i]]
+        if(! is.null(species.list)){
+          tree1=unroot(pruneTree(tree1, species.list))
+        }
+        both=tree1$tip.label
+        bothIndex=match(both, colnames(treesObj$report))
+        allreport=treesObj$report[,bothIndex]
+        ss=rowSums(allreport)
+        iiboth=which(ss==length(both))
+        #  torm=setdiff(treesObj$masterTree$tip.label, both)
+        binTreeUse=unroot(pruneTree(binTree,tree1$tip.label))
+        allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+        if(length(both)<10){
+          next
+        }
+
+        if(! usePaths){
+          torm=setdiff(treesObj$masterTree$tip.label, both)
+          allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+          for ( k in 1:length(iiboth)){
+            tmptree=rescaleTree(unroot(drop.tip(treesObj$trees[[iiboth[k]]], torm)))
+            allbranch[k, ]=tmptree$edge.length
+          }
+        }
+        else{
+
+          ii= match(namePaths(edgeIndexRelativeMaster(tree1, treesObj$masterTree),T), colnames(treesObj$paths))
+          ii2=match(namePaths(edgeIndexRelativeMaster(binTreeUse, treesObj$masterTree),T), colnames(treesObj$paths))
+          #show(ii)
+          #show(ii2)
+          stopifnot(all(ii=ii2))
+          allbranch=treesObj$paths[iiboth,ii]
+
+          allbranch=scaleMat_c(allbranch)
+        }
+        # message("done")
+        nb=length(both)
+        if(!useSQ){
+          proj=t(projection(t(allbranch), method="AVE", returnNV = F))
+        }
+        else{
+          proj=projectionSQ(allbranch)
+        }
+        # i1=match(i, iiboth)
+        #j1=match(j,iiboth)
+        #corout[i,j]=cor(proj[i1, ], proj[j1,])
+        #  tmpcor=cor(t(proj))
+        ai=which(maxn[iiboth, 1]==nb)
+        # show(iiboth[1])
+
+
+        tmp=simpleAUCmat(binTreeUse$edge.length, (proj[ai, ,drop=F]))
+
+        corout[iiboth[ai]]=tmp$auc
+
+        pout[iiboth[ai]]=tmp$pp
+        done=done+length(ai)
+        show(length(ai))
+        #  message(paste("Done with",done, "out of", todo))
+        #  message(paste(sum(is.na(corout))," left"), appendLF = T)
+        if(done>=maxDo){
+          message("DONE")
+          return(list(r=corout, p=pout))
+        }
+        #generate the projection
+      }
+    }
+
+    return(list(r=corout, p=pout))
+  }
+
+
+  plotTreesBinary=function(treesObj,  binTree, index, species.list=NULL){
+    maxT=treesObj$numTrees
+
+    binReport=as.vector(as.numeric(binTree$tip.label %in% colnames(treesObj$report)))
+
+    names(binReport)=colnames(treesObj$report)
+    maxn=treesObj$report[, species.list]%*%(binReport[species.list])
+
+
+
+
+    tree1=treesObj$trees[[index]]
+    if(! is.null(species.list)){
+      tree1=unroot(pruneTree(tree1, species.list))
+    }
+    both=tree1$tip.label
+    bothIndex=match(both, colnames(treesObj$report))
+    allreport=treesObj$report[,bothIndex]
+    ss=rowSums(allreport)
+    iiboth=which(ss==length(both))
+    #  torm=setdiff(treesObj$masterTree$tip.label, both)
+    binTreeUse=unroot(pruneTree(binTree,tree1$tip.label))
+    allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+
+    ii= match(namePaths(edgeIndexRelativeMaster(tree1, treesObj$masterTree),T), colnames(treesObj$paths))
+    ii2=match(namePaths(edgeIndexRelativeMaster(binTreeUse, treesObj$masterTree),T), colnames(treesObj$paths))
+    plot(tree1,use.edge.length = F)
+    plot(binTreeUse,use.edge.length = F)
+    show(cbind(ii,ii2))
+    stopifnot(all(ii==ii2))
+    allbranch=treesObj$paths[iiboth,ii]
+    thisgene=which(iiboth==index)
+    allbranch=scaleMat_c(allbranch)
+
+    nb=length(both)
+
+    proj=t(projection(t(allbranch), method="AVE", returnNV = F))
+    nv=t(projection(t(allbranch), method="AVE", returnNV = T))
+
+    plot(nv,proj[thisgene,], col=binTreeUse$edge.length+1)
+
+  }
+
+
+
+  correlateTrees=function(tree1, tree2, mastertree, residfun=residLN, plot=F, cutoff=0.00001, Tree1Bin=F){
+    both=intersect(tree1$tip.label, tree2$tip.label)
+    if(length(both)<10){
+      return(0)
+    }
+    iibad1=which(tree1$edge.length<cutoff)
+    iibad2=which(tree2$edge.length<cutoff)
+    show(c(length(iibad1), length(iibad2)))
+    show(tree1$edge.length)
+    if (!Tree1Bin){
+      tree1=rescaleTree(tree1)
+    }
+    tree2=rescaleTree(tree2)
+    tree1$edge.length[iibad1]=mastertree$edge.length[iibad1]
+    tree2$edge.length[iibad2]=mastertree$edge.length[iibad2]
+    if(!Tree1Bin){
+      e1=residfun(t(tree1$edge.length), mastertree$edge.length, plot=F)
+    }
+    else{
+      e1=tree1$edge.length
+    }
+    e2=residfun(t(tree2$edge.length), mastertree$edge.length, plot=F)
+    cc=cor((e1), (e2))
+    nn=character(length(e1))
+    iim=match(1:length(tree1$tip.label), tree1$edge[,2])
+
+    nn[iim]=tree1$tip.label
+
+    if(plot){
+
+
+      plotWtext(e1, e2, nn)
+      title(paste("R=", round(cc,2)))
+    }
+
+    return(list(l1=tree1$edge.length, l2=tree2$edge.length,e1=e1, e2=e2, cor=cc, names=nn, tree1=tree1, tree2=tree2))
+
+  }
+
+
+
+  correlateTreesProj=function(treeIn1, treeIn2, treesObj, residfun=residLN, plot=F, cutoff=-1, usePaths=T, tree1Bin=F, useIndex=F, species.list=NULL){
+    if(is.character(treeIn1)){
+      tree1=treesObj$trees[[treeIn1]]
+    }
+    else{
+      tree1=treeIn1
+    }
+    if(is.character(treeIn2)){
+      tree2=treesObj$trees[[treeIn2]]
+    }
+    else{
+      tree2=treeIn2
+    }
+    both=intersect(tree1$tip.label, tree2$tip.label)
+    if(!is.null(species.list)){
+      both=intersect(both, species.list)
+    }
+
+
+    torm=setdiff(treesObj$masterTree$tip.label, both)
+    tree1=pruneTree(tree1, both)
+    tree1=unroot(tree1)
+    if(tree1Bin){ #fix any edgest that were created through pruning
+      tree1$edge.length[tree1$edge.length>1]=1
+    }
+    tree2=pruneTree(tree2, both)
+    tree2=unroot(tree2)
+    allreport=treesObj$report[,both]
+    ss=rowSums(allreport)
+    iiboth=which(ss==length(both))
+    if (! usePaths){
+      allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+      for ( i in 1:length(iiboth)){
+        tmptree=rescaleTree(drop.tip(treesObj$trees[[iiboth[i]]], torm))
+        allbranch[i, ]=tmptree$edge.length
+      }
+
+    }
+    else{
+      if(! useIndex){
+        ee=edgeIndexRelativeMaster(tree1, treesObj$masterTree)
+        ii= match(namePaths(ee,T), colnames(treesObj$paths))
+        allbranch=treesObj$paths[iiboth,ii]
+        show(sum(is.na(allbranch)))
+        allbranch=scaleMat_c(allbranch)
+
+        nv=projection(t(allbranch), method="AVE", returnNV = T)
+        mastertree=treesObj$master
+        mastertree$edge.length=nv
+        res=correlateTrees(tree1, tree2, mastertree, residfun=residfun, plot=plot, cutoff=cutoff, Tree1Bin=tree1Bin)
+
+        res$nv=nv
+        res$allbranch=allbranch
+      }
+      else{
+        allbranch=getBranch(treesObj, bothIndex)
+        show(rownames(allbranch)[1])
+        allbranch=scaleMat_c(allbranch)
+        nv=projection(t(allbranch), method="AVE",returnNV = T)
+        rr=resid(allbranch, model.matrix(~0+nv))
+        rownames(rr)=rownames(allbranch)
+        show(dim(rr))
+        show(rownames(allbranch)[1])
+        plot(rr[name1,], rr[name2,])
+        res=list()
+      }
+    }
+
+    return(res)
+  }
+
+
+
+  correlateTreesAll1=function(name1, name2, treesObj, residfun=residLN, plot=F, cutoff=-1, usePaths=F){
+    tree1=treesObj$trees[[name1]]
+    tree2=treesObj$trees[[name2]]
+    both=intersect(tree1$tip.label, tree2$tip.label)
+    torm=setdiff(treesObj$mastertree$tip.lables, both)
+    tree1=pruneTree(tree1, both)
+    tree2=pruneTree(tree2, both)
+    allreport=treesObj$report[,both]
+    ss=rowSums(allreport)
+
+    iiboth=which(ss==length(both))
+    if (! usePaths){
+      allbranch=matrix(nrow=length(iiboth), ncol=length(tree1$edge.length))
+      for ( i in 1:length(iiboth)){
+        # tmptree=rescaleTree(pruneTree(treesObj$trees[[iiboth[i]]], both))
+        tmptree=rescaleTree(drop.tip(treesObj$trees[[iiboth[i]]], torm))
+        #  show(c(length(tmptree$edge.lenght), ncol(allbranch)))
+        allbranch[i, ]=tmptree$edge.length
+      }
+    }
+    else{
+      allbranch=treesObj$paths[iiboth,getEdgeIndex(tree1, treesObj$masterTree)]
+      #allbranch=scaleMat_c(allbranch)
+    }
+    #nv=projection(t(allbranch), method="AVE", returnNV = T)
+    nv=colMeans(allbranch)
+    nn=names(iiboth)
+    rownames(allbranch)=names(iiboth)
+    allbranch=resid(allbranch, model.matrix(~1+nv))
+    cc=cor(t(allbranch))
+    show(dim(cc))
+    show(length(nn))
+    ii=which(trees$inter[nn,nn]==length(both))
+    return(list(cc,ii))
+  }
+
+
+
+
+  mapEdge=function(tree1, tree2){
+    map=matchNodes(tree1,tree2, method = "descendant")
+    n=length(tree1$tip)
+    im=match(tree1$tip, tree2$tip)
+    map=rbind(map, cbind(1:n, im))
+    map=map[order(map[,1]),]
+    #show(n)
+    #show(map)
+    edge1remap=tree1$edge
+    #show(nrow(edge1remap))
+    #show(nrow(tree2$edge))
+
+    edge1remap[,1]=map[edge1remap[,1],2]
+    edge1remap[,2]=map[edge1remap[,2],2]
+    edge1remap
+
+  }
+
+
+  plotContinuousCharXY=function(gene, treesObj, tip.vals, tip.vals.ref=NULL,  col=NULL, residfun=residLO, useDiff=T, xlab){
+    #get the tree projection
+    tip.vals=tip.vals[!is.na(tip.vals)]
+
+    stopifnot(gene %in% names(treesObj$trees))
+    tree=treesObj$trees[[gene]]
+    stopifnot(!is.null(names(tip.vals)))
+    both=intersect(tree$tip.label, names(tip.vals))
+
+    stopifnot(length(both)>10)
+
+
+    torm=setdiff(treesObj$masterTree$tip.label, both)
+    tree=pruneTree(tree, both)
+    tip.vals=tip.vals[both]
+    allreport=treesObj$report[,both]
+    ss=rowSums(allreport)
+    iiboth=which(ss==length(both))
+
+
+    ee=edgeIndexRelativeMaster(tree, treesObj$masterTree)
+    ii= match(namePaths(ee,T), colnames(treesObj$paths))
+
+    allbranch=treesObj$paths[iiboth,ii]
+
+    allbranch=scaleMat_c(allbranch)
+    show(sum(is.na(allbranch)))
+    nv=projection(t(allbranch), method="AVE", returnNV = T)
+
+    proj=residfun(tree$edge.length, nv)
+    show(length(tree$edge.length))
+    treeChar=edgeVarsDiff(tree, tip.vals)
+    show(length(treeChar))
+    show(length(proj))
+    nn=nameEdges(tree)
+    nn[nn!=""]=speciesNames[nn[nn!=""], ]
+    #par(mfrow=c(2,2), mai=rep(0.7,4))
+    #plotWtext(sqrt(nv), sqrt(tree$edge.length), xlab="char", ylab="Gene branch length", labels = nn)
+
+    plotWtext(treeChar$edge.length, proj, xlab=xlab, ylab="relative gene branch length", labels = nn)
+    stat=cor.test(treeChar$edge.length, proj, method="s")
+    mtext(gene,side = 3, line=2, font=2)
+    mtext(paste0("r=", round(stat$estimate,2), ";  p-value=", format.pval(stat$p.value)), side = 3, line=0.5, cex=.7)
+
+    if(!is.null(tip.vals.ref)){
+      treeCharRef=edgeVars(tree, tip.vals.ref, useDiff=useDiff)
+      proj=resid(rbind(proj), model.matrix(~1+treeCharRef$edge.length))[1,]
+    }
+
+
+
+
+  }
+
+  plotWtext=function(x,y, labels, text.cex=0.7, ...){plot(x,y, pch=19, col="#00008844", xlim=range(x)+c(0,0.7),...); textplot(x,y, words=labels, cex=text.cex)}
+
+
+  plotResidsVsChar=function(x,y, labels, text.cex=0.7, names=T,...){
+    ii=which(!is.na(x)&!is.na(y))
+    show(range(x[ii]))
+    nn=names(x)[ii]
+    nn=speciesNames[nn,1]
+    nn[is.na(nn)]=""
+
+    plot(x[ii], y[ii], col="#0000AAAA",xlab="RER", ...);
+    if(names)
+      textplot(x[ii],y[ii], words=nn, cex=text.cex,new = F)
+  }
+
+
+
+
+
+  getStat=function(res){
+    stat=sign(res$Rho)*(-log10(res$P))
+    names(stat)=rownames(res)
+    #deal with duplicated genes
+    genenames=sub("\\..*", "",names(stat))
+    multname=names(which(table(genenames)>1))
+    for(n in multname){
+      ii=which(genenames==n)
+      iimax=which(max(stat[ii])==max(abs(stat[ii])))
+      stat[ii[-iimax]]=NA
+    }
+    sum(is.na(stat))
+    stat=stat[!is.na(stat)]
+
+    stat
+  }
+
+
+
+  varExplainedWithNA=function (dat, val, adjust=T)
+  {
+
+    adje=vare=double(nrow(dat))
+    names(vare)=rownames(dat)
+    for(i in 1:nrow(dat)){
+      ii=which(!is.na(dat[i,])&!is.na(val))
+      if(length(ii)>10){
+        mod0 = cbind(rep(1, length(ii)))
+        mod=model.matrix(~1+val[ii])
+        n=length(ii)
+
+        adj=(n-1)/(n-ncol(mod))
+
+        evince
+        resid = resid(dat[i,ii, drop=F], mod)
+        resid0 = resid(dat[i,ii,drop=F], mod0)
+        rss1 = resid^2 %*% rep(1, n)
+        rss0 = resid0^2 %*% rep(1, n)
+
+        vare[i]=1-rss1/rss0*adj
+        adje[i]=adj        }
+    }
+    return(cbind(vare, adje))
+  }
+
+
+
+
+
+
+
+
+  findJoining=function(matIndex, speciesIndex){
+    ss=colSums(matIndex[speciesIndex,])
+    ssi=which(ss==2)
+    ii=ssi[which(colSums(matIndex[ssi,ssi, drop=F])==0)]
+    res=matrix(nrow=length(ii), ncol=5)
+    count=0
+    for (i in ii){
+      tmpi=which(matIndex[speciesIndex,i]==1)
+      count=count+1
+      res[count,]=c(i, speciesIndex[tmpi],tmpi)
+    }
+    res
+  }
+  findAllPaths=function(matIndex, speciesIndex, key.species=1, tri.node=NULL){
+    if(is.null(tri.node)){
+      tri.node=which(colSums(matIndex)%%2==1)
+    }
+    speciesIndex=speciesIndex[-which(speciesIndex==key.species)]
+    count=0
+    paths=matrix(ncol=2, nrow=0)
+    while(length(speciesIndex)>1 &&count<200){
+      count=count+1
+      ss=colSums(matIndex[speciesIndex,])
+      res=findJoining(matIndex, speciesIndex)
+      toRm=integer()
+      for ( i in 1:nrow(res)){
+        ti=speciesIndex[tmpti<-which(matIndex[speciesIndex, i]==1)]
+
+        paths=rbind(paths, c(res[i,1], res[i,2]))
+        paths=rbind(paths, c(res[i,1], res[i,3]))
+      }
+      toRm=as.vector(res[, 4:5])
+      speciesIndex=speciesIndex[-toRm]
+      speciesIndex=c(speciesIndex, res[,1])
+    }
+    paths=rbind(paths, c(tri.node, key.species))
+    paths
+  }
+
+  getBranch=function(treesObj, speciesIndex,key.species=1, tri.node=NULL){
+    res=findAllPaths(treesObj$matAnc, speciesIndex)
+    ii=which(rowSums(treesObj$report[,speciesIndex])>=length(speciesIndex))
+    allBranch=treesObj$paths[ii,treesObj$matIndex[res[,c(2:1)]]]
+
+  }
+
+
+
+
+
+
+
+
+
+  getAncestor=function(tree, nodeN){
+    if(is.character(nodeN)){
+      nodeN=which(tree$tip.label==nodeN)
+    }
+    im=which(tree$edge[,2]==nodeN)
+    return(tree$edge[im,1])
+  }
+
+
+}
