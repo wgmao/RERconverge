@@ -30,8 +30,15 @@ R >= 3.3.0
 
 
 # CentOS 7
-
-
+1. Install R
+   ```
+   su
+   yum install epel-release
+   yum install R
+   ```
+2. Install dependcies for `devtools`
+   - sudo apt-get install libssl-dev
+   - sudo apt-get install libcurl4-openssl-dev
 
  # Win 7, Win 10
  
