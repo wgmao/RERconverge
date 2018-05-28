@@ -63,12 +63,12 @@
    ```
    
 
- # Win 7 (64 bit), Win 10 (64 bit)
- 1. Install R
-    - `https://cran.r-project.org/bin/windows/base/`
- 2. Install Rtools
-    - `https://cran.r-project.org/bin/windows/Rtools/`
-    - add `Rtools\bin` to the ``Path
+# Win 7 (64 bit), Win 10 (64 bit)
+1. Install R
+   - `https://cran.r-project.org/bin/windows/base/`
+2. Install Rtools
+   - `https://cran.r-project.org/bin/windows/Rtools/`
+   - add `Rtools\bin` to the ``Path
 3. Install R package dependcies
    ```
    devtools
@@ -81,17 +81,38 @@
    geiger
    knitr
    RcppArmadillo   
- 4. Install from Github
-   ```
-   library(devtools)
-   install_github("nclark-lab/RERconverge")
-   ```
+4. Install from Github
+  ```
+  library(devtools)
+  install_github("nclark-lab/RERconverge")
+  ```
  
  
- # Mac 10.13.1 (64 bit)
- 1. Install R
-    - `https://cran.r-project.org/bin/macosx/`
- 2. Install dependcies for `devtools`
-    - `https://www.xquartz.org/releases/XQuartz-2.7.11.html`
- 3. Install Xcode command line tools
-    - `$ xcode-select --install`
+# Mac 10.13.1 (64 bit)
+1. Install R
+   - `https://cran.r-project.org/bin/macosx/`
+2. Install dependcies for `devtools`
+   - `https://www.xquartz.org/releases/XQuartz-2.7.11.html`
+3. Install Xcode command line tools
+   - `$ xcode-select --install`
+4. Install `clang6` and `gfortran`
+   - `https://cran.r-project.org/bin/macosx/tools/`
+   - create .bash_proile and append `export PATH=/usr/local/clang6/bin:$PATH`
+5. Install R package dependcies
+   ```
+   devtools
+   RColorBrewer
+   gplots
+   phytools
+   ├──ape
+   ├──maps
+   ├──Rcpp
+   geiger
+   knitr
+   RcppArmadillo   
+   ```
+6. Install from Github
+  ```
+  library(devtools)
+  install_github("nclark-lab/RERconverge")
+  ```
