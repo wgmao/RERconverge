@@ -1,7 +1,9 @@
 # Caveat
-```
-R >= 3.3.0
-```
+1. R >= 3.3.0
+2. For Mac users, you can directly install from the binary file 
+   - `R CMD INSTALL RERconverge.tgz`
+
+
 # Ubuntu 14.04 (64 bit), Ubuntu 16.04 (64 bit)
 1. Install R
    - add the following line to `/etc/apt/source.list`.
@@ -62,8 +64,34 @@ R >= 3.3.0
    
 
  # Win 7 (64 bit), Win 10 (64 bit)
- 
+ 1. Install R
+    - `https://cran.r-project.org/bin/windows/base/`
+ 2. Install Rtools
+    - `https://cran.r-project.org/bin/windows/Rtools/`
+    - add `Rtools\bin` to the ``Path
+3. Install R package dependcies
+   ```
+   devtools
+   RColorBrewer
+   gplots
+   phytools
+   ├──ape
+   ├──maps
+   ├──Rcpp
+   geiger
+   knitr
+   RcppArmadillo   
+ 4. Install from Github
+   ```
+   library(devtools)
+   install_github("nclark-lab/RERconverge")
+   ```
  
  
  # Mac 10.13.1 (64 bit)
- 
+ 1. Install R
+    - `https://cran.r-project.org/bin/macosx/`
+ 2. Install dependcies for `devtools`
+    - `https://www.xquartz.org/releases/XQuartz-2.7.11.html`
+ 3. Install Xcode command line tools
+    - `$ xcode-select --install`
