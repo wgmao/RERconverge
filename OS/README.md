@@ -102,7 +102,7 @@
 4. Install `clang6` and `gfortran`
    - `https://cran.r-project.org/bin/macosx/tools/`
    - create `.bash_proile` in your home directory and add the following line 
-     `export PATH=/usr/local/clang6/bin:$PATH`
+     - `export PATH=/usr/local/clang6/bin:$PATH`
 5. Install R package dependcies
    ```
    devtools
