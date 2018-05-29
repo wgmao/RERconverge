@@ -9,6 +9,10 @@
    - add the following line to `/etc/apt/source.list`.
      - `deb https://cran.rstudio.com/bin/linux/ubuntu trusty/`
    - `sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9`
+   ```
+   sudo apt-get update
+   sudo apt-get install r-base
+   ```
 2. Install dependcies for `devtools`
    - `sudo apt-get install libssl-dev`
    - `sudo apt-get install libcurl4-openssl-dev`
