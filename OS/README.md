@@ -94,7 +94,7 @@
  
 # Mac 10.13.1 (64 bit)
 For Mac users, you are highly recommanded to install from the binary file
-   - R CMD INSTALL RERconverge_0.1.0.tgz
+   - `R CMD INSTALL RERconverge_0.1.0.tgz`
 If you are interested in installing from the source, please follow the steps as follows.
 1. Install R
    - `https://cran.r-project.org/bin/macosx/`
