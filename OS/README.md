@@ -1,7 +1,7 @@
 # Caveat
 1. R >= 3.3.0
 2. For Mac users, you can directly install from the binary file 
-   - `R CMD INSTALL RERconverge.tgz`
+   - `R CMD INSTALL RERconverge_0.1.0.tgz`
 
 
 # Ubuntu 14.04 (64 bit), Ubuntu 16.04 (64 bit)
@@ -72,7 +72,7 @@
    - `https://cran.r-project.org/bin/windows/base/`
 2. Install Rtools
    - `https://cran.r-project.org/bin/windows/Rtools/`
-   - add `Rtools\bin` to the ``Path
+   - add `Rtools\bin` to the `Path`
 3. Install R package dependcies
    ```
    devtools
