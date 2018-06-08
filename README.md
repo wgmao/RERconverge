@@ -1,3 +1,5 @@
+Please see [the wiki](https://github.com/wgmao/RERconverge/wiki) for extensive documentation.
+
 # RERConverge
 
 RERConverge is a set of software written in R that estimates the correlation between relative evolutionary rates of genes and the evolution of a convergent binary or continuous trait across a phylogeny.
