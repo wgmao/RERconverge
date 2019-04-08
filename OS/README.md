@@ -1,7 +1,7 @@
 # Caveat
 1. R >= 3.3.0
 2. For Mac users, you can directly install from the binary file 
-   - `R CMD INSTALL RERconverge_0.1.0.tgz`
+   - `R CMD INSTALL RERconverge_0.1.0_Mac.tgz`
 
 
 # Ubuntu 14.04 (64 bit), Ubuntu 16.04 (64 bit)
@@ -94,7 +94,7 @@
  
 # Mac 10.13.1 (64 bit)
 For Mac users, you are highly recommanded to install from the binary file
-   - `R CMD INSTALL RERconverge_0.1.0.tgz`
+   - `R CMD INSTALL RERconverge_0.1.0_Mac.tgz`
    
 If you are interested in installing from the source, please follow the steps shown below.
 1. Install R
