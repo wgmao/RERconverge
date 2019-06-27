@@ -43,3 +43,12 @@ docker run -d -p 8787:8787 -e PASSWORD=RER --name rstudio rerconverge
 docker stop <id>
 docker container rm <id>
 ```
+
+## Upload the image to Docker Hub
+```
+#https://ropenscilabs.github.io/r-docker-tutorial/04-Dockerhub.html
+docker login --username=yourhubusername
+docker images
+docker tag ### wem26/rerconverge:latest
+docker push wem26/rerconverge
+```
