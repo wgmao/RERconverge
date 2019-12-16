@@ -12,7 +12,7 @@ Rscript build_binary.R
 
 ## Windows
 ```
-#download the master branch
+#download the master branch and unzip the file
 library(devtools)
 setwd("../Downloads/")
 build(pkg = "RERconverge-master", binary = T, vignettes = T, args = c("--preclean","--install-tests"))
