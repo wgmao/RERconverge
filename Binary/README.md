@@ -1,6 +1,6 @@
 ## Linux
 ```
-#download the master branch
+#download the master branch, assume it is 
 Rscript build_binary.R
 ```
 
