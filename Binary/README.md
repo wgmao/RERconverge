@@ -6,7 +6,7 @@ Rscript build_binary.R
 
 ## Mac
 ```
-#download the master branch
+#download the master branch, unzip the file and assume it is in `/home/user/Downloads/`
 Rscript build_binary.R
 ```
 
